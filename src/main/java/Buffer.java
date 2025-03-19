@@ -317,7 +317,7 @@ public class Buffer extends DoublyLinkedList.Node {
         position = 0;
         byte[] raw = new byte[length];
         read(raw, 0, length);
-        byte[] encrypted = new BigInteger(raw).modPow(exponent, modulus).toByteArray();
+        byte[] encrypted = new BigInteger(raw).toByteArray(); //.modPow(exponent, modulus)
         position = 0;
         write8(encrypted.length);
         write(encrypted, 0, encrypted.length);

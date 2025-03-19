@@ -715,7 +715,7 @@ public class Game extends GameShell {
         }
 
         try {
-            loadArchiveChecksums();
+            //loadArchiveChecksums();
 
             archiveTitle = loadArchive(1, "title screen", "title", archiveChecksum[1], 25);
             fontPlain11 = new BitmapFont(archiveTitle, "p11_full", false);
@@ -1579,7 +1579,7 @@ public class Game extends GameShell {
         Draw2D.drawLineX(0, 77, 479, 0);
     }
 
-    static String server = "";
+    static String server = "127.0.0.1";
 
     public Socket openSocket(int port) throws IOException {
         return new Socket(InetAddress.getByName(server), port);
@@ -4582,11 +4582,11 @@ public class Game extends GameShell {
         }
 
         if (data != null) {
-            crc32.reset();
-            crc32.update(data);
-            if ((int) crc32.getValue() != expectedChecksum) {
-                data = null;
-            }
+//            crc32.reset();
+//            crc32.update(data);
+//            if ((int) crc32.getValue() != expectedChecksum) {
+//                data = null;
+//            }
         }
 
         if (data != null) {
@@ -4649,15 +4649,15 @@ public class Game extends GameShell {
                 }
 
                 if (data != null) {
-                    crc32.reset();
-                    crc32.update(data);
-                    int calculatedChecksum = (int) crc32.getValue();
-
-                    if (calculatedChecksum != expectedChecksum) {
-                        data = null;
-                        checksumErrors++;
-                        error = "Checksum error: " + calculatedChecksum;
-                    }
+//                    crc32.reset();
+//                    crc32.update(data);
+//                    int calculatedChecksum = (int) crc32.getValue();
+//
+//                    if (calculatedChecksum != expectedChecksum) {
+//                        data = null;
+//                        checksumErrors++;
+//                        error = "Checksum error: " + calculatedChecksum;
+//                    }
                 }
             } catch (IOException ioexception) {
                 if (error.equals("Unknown error")) {
