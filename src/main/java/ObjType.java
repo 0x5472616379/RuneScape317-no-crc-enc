@@ -29,6 +29,9 @@ public class ObjType {
         Buffer idx = new Buffer(archive.read("obj.idx"));
         count = idx.readU16();
         typeOffset = new int[count];
+
+        System.out.println("Total Items: " + count);
+
         int offset = 2;
         for (int j = 0; j < count; j++) {
             typeOffset[j] = offset;

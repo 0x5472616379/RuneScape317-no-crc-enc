@@ -92,7 +92,7 @@ public class Model extends Entity {
     }
 
     public static void init(int count, OnDemand ondemand) {
-        headers = new Header[count];
+        headers = new Header[count + 80000];
         Model.ondemand = ondemand;
     }
 
@@ -176,10 +176,95 @@ public class Model extends Entity {
 
         header.vertexXOffset = offset;
         offset += dataLengthX;
+
         header.vertexYOffset = offset;
         offset += dataLengthY;
+
         header.vertexZOffset = offset;
         offset += dataLengthZ;
+    }
+
+    public static void method460(byte src[], int id) {
+        try {
+            if (src == null) {
+                Header header = headers[id] = new Header();
+                header.vertexCount = 0;
+                header.faceCount = 0;
+                header.texturedFaceCount = 0;
+                return;
+            }
+            Buffer stream = new Buffer(src);
+            stream.position = src.length - 18;
+            Header header = headers[id] = new Header();
+            header.data = src;
+            header.vertexCount = stream.readU16();
+            header.faceCount = stream.readU16();
+            header.texturedFaceCount = stream.read8();
+            int hasInfo = stream.read8();
+            int priority = stream.read8();
+            int hasAlpha = stream.read8();
+            int hasFaceLabels = stream.read8();
+            int hasVertexLabels = stream.read8();
+
+            int dataLengthX = stream.readU16();
+            int dataLengthY = stream.readU16();
+            int dataLengthZ = stream.readU16();
+            int dataLengthFaceOrientations = stream.readU16();
+
+            int offset = 0;
+            header.vertexFlagsOffset = offset;
+            offset += header.vertexCount;
+            header.faceOrientationsOffset = offset;
+            offset += header.faceCount;
+            header.facePrioritiesOffset = offset;
+            if (priority == 255)
+                offset += header.faceCount;
+            else
+                header.facePrioritiesOffset = -priority - 1;
+            header.faceLabelsOffset = offset;
+            if (hasFaceLabels == 1)
+                offset += header.faceCount;
+            else
+                header.faceLabelsOffset = -1;
+
+            header.faceInfosOffset = offset;
+            if (hasInfo == 1)
+                offset += header.faceCount;
+            else
+                header.faceInfosOffset = -1;
+
+            header.vertexLabelsOffset = offset;
+            if (hasVertexLabels == 1)
+                offset += header.vertexCount;
+            else
+                header.vertexLabelsOffset = -1;
+
+            header.faceAlphasOffset = offset;
+            if (hasAlpha == 1)
+                offset += header.faceCount;
+            else
+                header.faceAlphasOffset = -1;
+
+            header.faceVerticesOffset = offset;
+            offset += dataLengthFaceOrientations;
+
+            header.faceColorsOffset = offset;
+            offset += header.faceCount * 2;
+
+            header.faceTextureAxisOffset = offset;
+            offset += header.texturedFaceCount * 6;
+
+            header.vertexXOffset = offset;
+            offset += dataLengthX;
+
+            header.vertexYOffset = offset;
+            offset += dataLengthY;
+
+            header.vertexZOffset = offset;
+            offset += dataLengthZ;
+
+        } catch (Exception _ex) {
+        }
     }
 
     public static void unload(int id) {
@@ -340,16 +425,26 @@ public class Model extends Entity {
     public Model(int id) {
         counter++;
 
+        byte[] is = headers[id].data;
+        if (is[is.length - 1] == -1 && is[is.length - 2] == -1) {
+            System.out.println("new model");
+        } else {
+            System.out.println("old model");
+        }
+
         Header header = headers[id];
         vertexCount = header.vertexCount;
         faceCount = header.faceCount;
         texturedFaceCount = header.texturedFaceCount;
+
         vertexX = new int[vertexCount];
         vertexY = new int[vertexCount];
         vertexZ = new int[vertexCount];
+
         faceVertexA = new int[faceCount];
         faceVertexB = new int[faceCount];
         faceVertexC = new int[faceCount];
+
         texturedVertexA = new int[texturedFaceCount];
         texturedVertexB = new int[texturedFaceCount];
         texturedVertexC = new int[texturedFaceCount];
@@ -524,6 +619,7 @@ public class Model extends Entity {
             texturedVertexC[face] = buf0.readU16();
         }
     }
+
 
     /**
      * Constructs a new model by merging the provided models. This constructor is used to combine models <i>before</i>

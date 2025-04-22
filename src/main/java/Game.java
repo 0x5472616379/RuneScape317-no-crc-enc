@@ -6,10 +6,7 @@ import org.apache.commons.math3.random.ISAACRandom;
 
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.io.DataInputStream;
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.OutputStream;
+import java.io.*;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
@@ -1030,6 +1027,8 @@ public class Game extends GameShell {
             IfType.unpack(archiveInterface, new BitmapFont[]{fontPlain11, fontPlain12, fontBold12, fontQuill8}, archiveMedia);
 
             drawProgress(100, "Preparing game engine");
+
+//            repackCacheIndex(1);
 
             for (int y = 0; y < 33; y++) {
                 int left = 999;
@@ -3938,7 +3937,15 @@ public class Game extends GameShell {
             }
 
             if (request.store == 0) {
+//                if (request.file < 9200){
+//                    Model.unpack(request.data, request.file);
+//                }
+//                else{
+//                    Model.method460(request.data, request.file);
+//                }
+
                 Model.unpack(request.data, request.file);
+                //Model.method460(request.data, request.file);
 
                 if ((ondemand.getModelFlags(request.file) & 0x62) != 0) {
                     redrawSidebar = true;
@@ -6301,6 +6308,59 @@ public class Game extends GameShell {
         }
     }
 
+    public String indexLocation(int cacheIndex, int index) {
+        return Signlink.findcachedir() + "index" + cacheIndex + "/" + (index != -1 ? index + ".gz" : "");
+    }
+
+    public static String getFileNameWithoutExtension(String fileName) {
+        File tmpFile = new File(fileName);
+        tmpFile.getName();
+        int whereDot = tmpFile.getName().lastIndexOf('.');
+        if (0 < whereDot && whereDot <= tmpFile.getName().length() - 2) {
+            return tmpFile.getName().substring(0, whereDot);
+        }
+        return "";
+    }
+
+    public void repackCacheIndex(int cacheIndex) {
+        System.out.println("Started repacking index " + cacheIndex + ".");
+        int indexLength = new File(indexLocation(cacheIndex, -1)).listFiles().length;
+        File[] file = new File(indexLocation(cacheIndex, -1)).listFiles();
+        try {
+            for (int index = 0; index < indexLength; index++) {
+                int fileIndex = Integer.parseInt(getFileNameWithoutExtension(file[index].toString()));
+                byte[] data = fileToByteArray(cacheIndex, fileIndex);
+                if(data != null && data.length > 0) {
+                    filestores[cacheIndex].write(data, fileIndex, data.length);
+//                    filestores.decompress(data, fileIndex, data.length);
+                    System.out.println("Repacked " + fileIndex + ".");
+                } else {
+                    System.out.println("Unable to locate index " + fileIndex + ".");
+                }
+            }
+        } catch(Exception e) {
+            System.out.println("Error packing cache index " + cacheIndex + ".");
+            System.out.println(e.toString());
+        }
+        System.out.println("Finished repacking " + cacheIndex + ".");
+    }
+
+    public byte[] fileToByteArray(int cacheIndex, int index) {
+        try {
+            if (indexLocation(cacheIndex, index).length() <= 0 || indexLocation(cacheIndex, index) == null) {
+                return null;
+            }
+            File file = new File(indexLocation(cacheIndex, index));
+            byte[] fileData = new byte[(int)file.length()];
+            FileInputStream fis = new FileInputStream(file);
+            fis.read(fileData);
+            fis.close();
+            return fileData;
+        } catch(Exception e) {
+            return null;
+        }
+    }
+
     public void updateInterfaceContent(IfType iface) {
         int type = iface.contentType;
 
@@ -8266,6 +8326,8 @@ public class Game extends GameShell {
             int dstX = e.x - ((e.targetTileX - sceneBaseTileX - sceneBaseTileX) * 64);
             int dstZ = e.z - ((e.targetTileZ - sceneBaseTileZ - sceneBaseTileZ) * 64);
 
+            System.out.println("targetID: " + e.targetID);
+
             if ((dstX != 0) || (dstZ != 0)) {
                 e.dstYaw = (int) (Math.atan2(dstX, dstZ) * 325.94900000000001D) & 0x7ff;
             }
@@ -8273,6 +8335,7 @@ public class Game extends GameShell {
             e.targetTileX = 0;
             e.targetTileZ = 0;
         }
+
 
         int remainingYaw = (e.dstYaw - e.yaw) & 0x7ff;
 
