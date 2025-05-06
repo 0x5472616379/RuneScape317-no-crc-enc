@@ -28,7 +28,7 @@ public class ObjType {
         dat = new Buffer(archive.read("obj.dat"));
         Buffer idx = new Buffer(archive.read("obj.idx"));
         count = idx.readU16();
-        typeOffset = new int[count];
+        typeOffset = new int[count + 100000];
 
         System.out.println("Total Items: " + count);
 

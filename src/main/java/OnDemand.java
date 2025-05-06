@@ -54,6 +54,7 @@ public class OnDemand implements Runnable {
     }
 
     public boolean validate(int expectedVersion, int crc, byte[] src) {
+
         if (src != null) {
             return true;
         }
@@ -209,7 +210,7 @@ public class OnDemand implements Runnable {
         byte[] data = versionlist.read("model_index");
         int count = storeFileVersions[0].length;
 
-        modelIndex = new byte[count];
+        modelIndex = new byte[count + 80000];
 
         for (int i = 0; i < count; i++) {
             if (i < data.length) {
@@ -336,12 +337,12 @@ public class OnDemand implements Runnable {
     }
 
     public void request(int store, int file) {
-        if ((store < 0) || (store > storeFileVersions.length) || (file < 0) || (file > storeFileVersions[store].length)) {
-            return;
-        }
-        if (storeFileVersions[store][file] == 0) {
-            return;
-        }
+//        if ((store < 0) || (store > storeFileVersions.length) || (file < 0) || (file > storeFileVersions[store].length)) {
+//            return;
+//        }
+//        if (storeFileVersions[store][file] == 0) {
+//            return;
+//        }
 
         synchronized (lock) {
             for (OnDemandRequest request : requests) {
@@ -475,9 +476,9 @@ public class OnDemand implements Runnable {
         if (game.filestores[0] == null) {
             return;
         }
-        if (storeFileVersions[store][file] == 0) {
-            return;
-        }
+       if (storeFileVersions[store][file] == 0) {
+           return;
+       }
         if (storeFilePriorities[store][file] == 0) {
             return;
         }
@@ -620,9 +621,9 @@ public class OnDemand implements Runnable {
                 data = game.filestores[request.store + 1].read(request.file);
             }
 
-            if (!validate(storeFileVersions[request.store][request.file], storeFileChecksums[request.store][request.file], data)) {
-                data = null;
-            }
+//            if (!validate(storeFileVersions[request.store][request.file], storeFileChecksums[request.store][request.file], data)) {
+//                data = null;
+//            }
 
             synchronized (queue) {
                 if (data == null) {

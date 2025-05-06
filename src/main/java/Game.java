@@ -670,7 +670,12 @@ public class Game extends GameShell {
     public int publicChatSetting;
     public int lastWaveLoops = -1;
 
+    public static Game _instance = null;
+
     public Game() {
+        if (_instance == null){
+            _instance = this;
+        }
     }
 
     @Override
@@ -4345,6 +4350,14 @@ public class Game extends GameShell {
         }
     }
 
+    public void DoSomething(int id){
+        System.out.println("Tab! " + id);
+        selectedTab = id;
+
+        redrawSidebar = true;
+        redrawSideicons = true;
+    }
+
     private void sendMouseInput() {
         long delta = (super.mouseClickTime - prevMousePressTime) / 50L;
         if (delta > 4095L) {
@@ -5267,6 +5280,11 @@ public class Game extends GameShell {
         out.write16LEA(interfaceID);
         out.write16LEA(objID);
         out.write16LE(slot);
+
+        System.out.println("InterfaceID: " + interfaceID);
+        System.out.println("ObjectId: " + objID);
+        System.out.println("Slot: " + slot);
+
         actionCycles = 0;
         actionInterfaceID = interfaceID;
         actionSlot = slot;
@@ -5546,9 +5564,11 @@ public class Game extends GameShell {
 
     private void useInventoryOption2(int slot, int interfaceID, int objID) {
         out.writeOp(43);
+
         out.write16LE(interfaceID);
         out.write16A(objID);
         out.write16A(slot);
+
         actionCycles = 0;
         actionInterfaceID = interfaceID;
         actionSlot = slot;
@@ -10855,6 +10875,7 @@ public class Game extends GameShell {
         int duration = in.readU16();
         int peakPitch = in.readU8();
         int arcSize = in.readU8();
+
         if ((srcX >= 0) && (srcZ >= 0) && (srcX < 104) && (srcZ < 104) && (dstX >= 0) && (dstZ >= 0) && (dstX < 104) && (dstZ < 104) && (spotanimID != 65535)) {
             srcX = (srcX * 128) + 64;
             srcZ = (srcZ * 128) + 64;

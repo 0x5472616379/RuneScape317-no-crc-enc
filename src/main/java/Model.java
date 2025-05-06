@@ -425,13 +425,6 @@ public class Model extends Entity {
     public Model(int id) {
         counter++;
 
-        byte[] is = headers[id].data;
-        if (is[is.length - 1] == -1 && is[is.length - 2] == -1) {
-            System.out.println("new model");
-        } else {
-            System.out.println("old model");
-        }
-
         Header header = headers[id];
         vertexCount = header.vertexCount;
         faceCount = header.faceCount;

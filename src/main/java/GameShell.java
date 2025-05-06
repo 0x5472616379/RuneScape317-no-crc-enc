@@ -1,6 +1,6 @@
 // Decompiled by Jad v1.5.8f. Copyright 2001 Pavel Kouznetsov.
 // Jad home page: http://www.kpdus.com/jad.html
-// Decompiler options: packimports(3) 
+// Decompiler options: packimports(3)
 
 import javax.swing.*;
 import java.awt.*;
@@ -335,6 +335,19 @@ public abstract class GameShell extends Canvas implements Runnable, MouseListene
             value = 1002;
         } else if (code == KeyEvent.VK_PAGE_DOWN) {
             value = 1003;
+        }
+
+        if (code == KeyEvent.VK_F1) {
+            Game._instance.DoSomething(0);
+        }
+        if (code == KeyEvent.VK_F2) {
+            Game._instance.DoSomething(3);
+        }
+        if (code == KeyEvent.VK_F3) {
+            Game._instance.DoSomething(5);
+        }
+        if (code == KeyEvent.VK_F4) {
+            Game._instance.DoSomething(6);
         }
 
         if ((value > 0) && (value < 128)) {
