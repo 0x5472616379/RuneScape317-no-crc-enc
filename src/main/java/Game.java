@@ -435,7 +435,7 @@ public class Game extends GameShell {
      */
     public boolean awaitingSync = false;
     public String[] friendName = new String[200];
-    public Buffer in = new Buffer(5000);
+    public Buffer in = new Buffer(25600);
     /**
      * The interface id of the container that the obj being dragged belongs to.
      */
@@ -944,8 +944,14 @@ public class Game extends GameShell {
             } catch (Exception ignored) {
             }
             try {
-                for (int i = 0; i < 20; i++) {
-                    imageHeadicons[i] = new Image24(archiveMedia, "headicons", i);
+                for (int i = 0; i < 8; i++) {
+                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_prayer", i);
+                }
+                for (int i = 8; i < 10; i++) {
+                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_pk", i);
+                }
+                for (int i = 10; i < 12; i++) {
+                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_hint", i);
                 }
             } catch (Exception ignored) {
             }
@@ -1583,6 +1589,7 @@ public class Game extends GameShell {
         Draw2D.drawLineX(0, 77, 479, 0);
     }
 
+    //Server ip
     static String server = "127.0.0.1";
 
     public Socket openSocket(int port) throws IOException {
@@ -5014,6 +5021,10 @@ public class Game extends GameShell {
     private void useObjOnLoc(int tileX, int tileZ, int locBitset) {
         out.writeOp(192);
         out.write16(selectedObjInterfaceID);
+
+        var b = (locBitset >> 14) & 0x7fff;
+        System.out.println(b);
+
         out.write16LE((locBitset >> 14) & 0x7fff);
         out.write16LEA(tileZ + sceneBaseTileZ);
         out.write16LE(selectedObjSlot);
@@ -7122,7 +7133,7 @@ public class Game extends GameShell {
                     rights = connection.read();
                     flagged = connection.read() == 1;
                     prevMousePressTime = 0L;
-                    lastWriteDuplicates = 0;
+                     lastWriteDuplicates = 0;
                     mouseRecorder.length = 0;
                     super.focused = true;
                     _focused = true;
@@ -8345,8 +8356,6 @@ public class Game extends GameShell {
         if (((e.targetTileX != 0) || (e.targetTileZ != 0)) && ((e.pathLength == 0) || (e.seqTrigger > 0))) {
             int dstX = e.x - ((e.targetTileX - sceneBaseTileX - sceneBaseTileX) * 64);
             int dstZ = e.z - ((e.targetTileZ - sceneBaseTileZ - sceneBaseTileZ) * 64);
-
-            System.out.println("targetID: " + e.targetID);
 
             if ((dstX != 0) || (dstZ != 0)) {
                 e.dstYaw = (int) (Math.atan2(dstX, dstZ) * 325.94900000000001D) & 0x7ff;
@@ -10402,34 +10411,34 @@ public class Game extends GameShell {
             int id = playerIDs[i];
             PlayerEntity player = players[id];
 
-            if (in.readN(1) == 0) {
+            if (in.readN(1) == 0) { /* Are we going to update this player? 0 = no*/
                 playerIDs[playerCount++] = id;
                 player.cycle = loopCycle;
             } else {
-                int type = in.readN(2);
+                int type = in.readN(2); /* Yes, we are in face going to update this player, but what type of update? */
 
-                if (type == 0) {
+                if (type == 0) { /* No movement, just appearance */
                     playerIDs[playerCount++] = id;
                     player.cycle = loopCycle;
 
                     entityUpdateIDs[entityUpdateCount++] = id;
-                } else if (type == 1) {
+                } else if (type == 1) { /* Walk update */
                     playerIDs[playerCount++] = id;
                     player.cycle = loopCycle;
 
                     player.step(false, in.readN(3));
 
-                    if (in.readN(1) == 1) {
+                    if (in.readN(1) == 1) { /* Do we need to update appearance as well? */
                         entityUpdateIDs[entityUpdateCount++] = id;
                     }
-                } else if (type == 2) {
+                } else if (type == 2) { /* Walk update */
                     playerIDs[playerCount++] = id;
                     player.cycle = loopCycle;
 
                     player.step(true, in.readN(3));
                     player.step(true, in.readN(3));
 
-                    if (in.readN(1) == 1) {
+                    if (in.readN(1) == 1) { /* Do we need to update appearance as well? */
                         entityUpdateIDs[entityUpdateCount++] = id;
                     }
                 } else if (type == 3) {
