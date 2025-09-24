@@ -78,11 +78,19 @@ public class FileArchive {
 
             byte[] dst = new byte[fileSizeInflated[file]];
 
-            if (!unpacked) {
-                BZip2.decompress(data, fileOffset[file], fileSizeDeflated[file], dst);
-            } else {
-                System.arraycopy(data, fileOffset[file], dst, 0, fileSizeInflated[file]);
+            int i = fileOffset[file];
+            int j = fileSizeInflated[file];
+
+            try{
+                if (!unpacked) {
+                    BZip2.decompress(data, fileOffset[file], fileSizeDeflated[file], dst);
+                } else {
+                    System.arraycopy(data, fileOffset[file], dst, 0, fileSizeInflated[file]);
+                }
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
+
             return dst;
         }
         return null;

@@ -29,7 +29,6 @@ public class ObjType {
         Buffer idx = new Buffer(archive.read("obj.idx"));
         count = idx.readU16();
         typeOffset = new int[count + 100000];
-
         System.out.println("Total Items: " + count);
 
         int offset = 2;
@@ -104,7 +103,12 @@ public class ObjType {
             }
         }
 
-        Model model = type.getModel(1);
+        Model model = null;
+        try {
+            model = type.getModel(1);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         if (model == null) {
             return null;
@@ -480,6 +484,10 @@ public class ObjType {
      * @return the model or <code>null</code> if unavailable.
      */
     public Model getModel(int count) {
+
+        System.out.println("getModel called for item " + this.id + " with count " + count);
+
+
         if ((stackID != null) && (count > 1)) {
             int id = -1;
 
@@ -494,7 +502,17 @@ public class ObjType {
             }
         }
 
-        Model model = modelCache.get(id);
+        if (id < 0){
+            System.out.println();
+        }
+        Model model = null;
+
+        try{
+            model = modelCache.get(id);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
 
         if (model != null) {
             return model;
