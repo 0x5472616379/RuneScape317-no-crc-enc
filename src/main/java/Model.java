@@ -101,6 +101,8 @@ public class Model extends Entity {
 
     public static void unpack(byte[] src, int id) {
 
+
+
         if (src == null) {
             Header header = headers[id] = new Header();
             header.vertexCount = 0;
@@ -123,10 +125,11 @@ public class Model extends Entity {
         int hasFaceLabels = buffer.readU8();
         int hasVertexLabels = buffer.readU8();
 
-        if (id == 5196) { //5196, ely 461,
+        if (id == 461) { //5196, ely 461,
             System.out.println();
-            //hasFaceLabels = 1;
-            //hasVertexLabels = 1;
+            //assuming face and vertex count are correct
+            hasFaceLabels = 1;
+            hasVertexLabels = 1;
         }
 
         int dataLengthX = buffer.readU16();
@@ -436,6 +439,10 @@ public class Model extends Entity {
     public Model(int id) {
         counter++;
 
+        if (id == 461){
+            System.out.println();
+        }
+
         Header header = headers[id];
         byte[] actualData = header.data;
         if (actualData[actualData.length - 1] == -1 && actualData[actualData.length - 2] == -1) {
@@ -548,6 +555,7 @@ public class Model extends Entity {
         buf1.position = header.faceInfosOffset;
         buf2.position = header.facePrioritiesOffset;
         buf3.position = header.faceAlphasOffset;
+
         buf4.position = header.faceLabelsOffset;
 
         for (int face = 0; face < faceCount; face++) {
@@ -569,6 +577,20 @@ public class Model extends Entity {
                 faceLabel[face] = buf4.readU8();
             }
         }
+
+        //Loop through and set each faceLabel to 16
+        //Loop through and set each vertexLabel to 28
+
+//        if (id == 461){
+//            for (int i = 0; i < faceLabel.length; i++) {
+//                faceLabel[i] = 16;
+//            }
+//
+//            for (int i = 0; i < vertexLabel.length; i++) {
+//                faceLabel[i] = 28;
+//            }
+//        }
+
 
         buf0.position = header.faceVerticesOffset;
         buf1.position = header.faceOrientationsOffset;
@@ -1018,6 +1040,7 @@ public class Model extends Entity {
     }
 
     public void read525Model(byte abyte0[], int modelID) {
+        //Ely goes here
         Buffer nc1 = new Buffer(abyte0);
         Buffer nc2 = new Buffer(abyte0);
         Buffer nc3 = new Buffer(abyte0);
@@ -1030,10 +1053,12 @@ public class Model extends Entity {
         int numTriangles = nc1.readU16();
         int numTexTriangles = nc1.readU8();
         Header ModelDef_1 = headers[modelID] = new Header();
+
         ModelDef_1.data = abyte0;
         ModelDef_1.vertexCount = numVertices;
         ModelDef_1.faceCount = numTriangles;
         ModelDef_1.texturedFaceCount = numTexTriangles;
+
         int l1 = nc1.readU8();
         boolean bool = (0x1 & l1 ^ 0xffffffff) == -2;
         int i2 = nc1.readU8();
@@ -1341,6 +1366,17 @@ public class Model extends Entity {
         faceVertexA = facePoint1;
         faceVertexB = facePoint2;
         faceVertexC = facePoint3;
+
+        if (modelID == 461){
+            for (int i = 0; i < faceLabel.length; i++) {
+                faceLabel[i] = 16;
+            }
+
+            for (int i = 0; i < vertexLabel.length; i++) {
+                vertexLabel[i] = 28;
+            }
+        }
+
         convertTexturesTo317(textureIds, texTrianglesPoint1, texTrianglesPoint2, texTrianglesPoint3, false);
     }
 
