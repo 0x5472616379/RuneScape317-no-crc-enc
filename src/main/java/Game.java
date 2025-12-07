@@ -435,7 +435,7 @@ public class Game extends GameShell {
      */
     public boolean awaitingSync = false;
     public String[] friendName = new String[200];
-    public Buffer in = new Buffer(25600);
+    public Buffer in = new Buffer(5000);
     /**
      * The interface id of the container that the obj being dragged belongs to.
      */
@@ -756,7 +756,9 @@ public class Game extends GameShell {
             Model.init(ondemand.getFileCount(0), ondemand);
 
             if (!lowmem) {
-                song = 7;
+                MidiPlayer.start();
+                SoundEffectPlayer.init();
+                song = 8;
 
                 try {
                     song = Integer.parseInt(getParameter("music"));
@@ -2393,27 +2395,19 @@ public class Game extends GameShell {
             boolean active = midiEnabled;
 
             if (varp == 0) {
-                midivol(midiEnabled, 0);
+                midivol(midiEnabled, 0);      // Level 4 (loudest)
                 midiEnabled = true;
-            }
-
-            if (varp == 1) {
-                midivol(midiEnabled, -400);
+            } else if (varp == 1) {
+                midivol(midiEnabled, -400);   // Level 3
                 midiEnabled = true;
-            }
-
-            if (varp == 2) {
-                midivol(midiEnabled, -800);
+            } else if (varp == 2) {
+                midivol(midiEnabled, -800);   // Level 2
                 midiEnabled = true;
-            }
-
-            if (varp == 3) {
-                midivol(midiEnabled, -1200);
+            } else if (varp == 3) {
+                midivol(midiEnabled, -1200);  // Level 1 (quietest)
                 midiEnabled = true;
-            }
-
-            if (varp == 4) {
-                midiEnabled = false;
+            } else if (varp == 4) {
+                midiEnabled = false;          // Mute/Off
             }
 
             if ((midiEnabled != active) && !lowmem) {
@@ -2431,22 +2425,18 @@ public class Game extends GameShell {
         if (type == 4) {
             if (varp == 0) {
                 waveEnabled = true;
-                setWaveVolume(0);
-            }
-            if (varp == 1) {
+                setWaveVolume(0);        // Level 4 (loudest)
+            } else if (varp == 1) {
                 waveEnabled = true;
-                setWaveVolume(-400);
-            }
-            if (varp == 2) {
+                setWaveVolume(-400);     // Level 3
+            } else if (varp == 2) {
                 waveEnabled = true;
-                setWaveVolume(-800);
-            }
-            if (varp == 3) {
+                setWaveVolume(-800);     // Level 2
+            } else if (varp == 3) {
                 waveEnabled = true;
-                setWaveVolume(-1200);
-            }
-            if (varp == 4) {
-                waveEnabled = false;
+                setWaveVolume(-1200);    // Level 1 (quietest)
+            } else if (varp == 4) {
+                waveEnabled = false;     // Mute/Off
             }
         }
 
@@ -4111,6 +4101,35 @@ public class Game extends GameShell {
         }
     }
 
+    private void processSoundEffects() {
+        if (!waveEnabled || lowmem) {
+            return;
+        }
+
+        // Process all queued sounds
+        for (int i = 0; i < waveCount; i++) {
+            // Decrease delay
+            waveDelay[i]--;
+
+            // Play when delay reaches 0
+            if (waveDelay[i] <= 0) {
+                SoundEffectPlayer.play(waveIDs[i], waveLoops[i], 0);
+            }
+        }
+
+        // Remove played sounds from queue
+        int newCount = 0;
+        for (int i = 0; i < waveCount; i++) {
+            if (waveDelay[i] > 0) {
+                waveIDs[newCount] = waveIDs[i];
+                waveLoops[newCount] = waveLoops[i];
+                waveDelay[newCount] = waveDelay[i];
+                newCount++;
+            }
+        }
+        waveCount = newCount;
+    }
+
     public void updateGame() {
         if (systemUpdateTimer > 1) {
             systemUpdateTimer--;
@@ -4134,6 +4153,7 @@ public class Game extends GameShell {
         updateSceneState();
         updateTemporaryLocs();
         updateAudio();
+        //processSoundEffects();
 
         idleNetCycles++;
 
@@ -5291,10 +5311,6 @@ public class Game extends GameShell {
         out.write16LEA(interfaceID);
         out.write16LEA(objID);
         out.write16LE(slot);
-
-        System.out.println("InterfaceID: " + interfaceID);
-        System.out.println("ObjectId: " + objID);
-        System.out.println("Slot: " + slot);
 
         actionCycles = 0;
         actionInterfaceID = interfaceID;
@@ -7861,58 +7877,34 @@ public class Game extends GameShell {
     }
 
     public void updateAudio() {
-        for (int wave = 0; wave < waveCount; wave++) {
-            if (waveDelay[wave] > 0) {
-                waveDelay[wave]--;
-                continue;
-            }
-
-            boolean failed = false;
-
-            try {
-                if ((waveIDs[wave] == lastWaveID) && (waveLoops[wave] == lastWaveLoops)) {
-                    if (!wavereplay()) {
-                        failed = true;
-                    }
-                } else {
-                    Buffer buffer = SoundTrack.generate(waveLoops[wave], waveIDs[wave]);
-
-                    if (buffer == null) {
-                        failed = true;
-                    } else {
-                        // the sample rate is 22050Hz and sample size is 1 byte which means dividing the bytes by 22 is
-                        // roughly converting the bytes to time in milliseconds
-                        if ((System.currentTimeMillis() + (long) (buffer.position / 22)) > (lastWaveStartTime + (long) (lastWaveLength / 22))) {
-                            lastWaveLength = buffer.position;
-                            lastWaveStartTime = System.currentTimeMillis();
-
-                            if (wavesave(buffer.data, buffer.position)) {
-                                lastWaveID = waveIDs[wave];
-                                lastWaveLoops = waveLoops[wave];
-                            } else {
-                                failed = true;
-                            }
-                        }
-                    }
+        // Process sound effects
+        if (waveEnabled && !lowmem) {
+            for (int wave = 0; wave < waveCount; wave++) {
+                if (waveDelay[wave] > 0) {
+                    waveDelay[wave]--;
+                    continue;
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
 
-            if (!failed || (waveDelay[wave] == -5)) {
+                // Play the sound effect immediately
+                try {
+                    SoundEffectPlayer.play(waveIDs[wave], waveLoops[wave], 0);
+                } catch (Exception e) {
+                    System.err.println("Error playing sound " + waveIDs[wave]);
+                    e.printStackTrace();
+                }
+
+                // Remove from queue
                 waveCount--;
-
                 for (int i = wave; i < waveCount; i++) {
                     waveIDs[i] = waveIDs[i + 1];
                     waveLoops[i] = waveLoops[i + 1];
                     waveDelay[i] = waveDelay[i + 1];
                 }
                 wave--;
-            } else {
-                waveDelay[wave] = -5;
             }
         }
 
+        // Process MIDI song delays
         if (nextSongDelay > 0) {
             nextSongDelay -= 20;
 
@@ -9258,11 +9250,12 @@ public class Game extends GameShell {
 
     public void setWaveVolume(int volume) {
         Signlink.wavevol = volume;
+        SoundEffectPlayer.setVolume(volume);
     }
 
     private void drawMultizone() {
         if (multizone == 1) {
-            imageHeadicons[1].draw(472, 296);
+            imageHeadicons[0].draw(472, 296);
         }
     }
 
@@ -12038,6 +12031,7 @@ public class Game extends GameShell {
         int waveID = in.readU16();
         int loopCount = in.readU8();
         int delay = in.readU16();
+
         if (waveEnabled && !lowmem && (waveCount < 50)) {
             waveIDs[waveCount] = waveID;
             waveLoops[waveCount] = loopCount;
