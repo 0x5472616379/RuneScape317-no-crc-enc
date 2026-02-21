@@ -712,7 +712,8 @@ public class Game extends GameShell {
 
         if (Signlink.cache_dat != null) {
             for (int i = 0; i < 5; i++) {
-                filestores[i] = new FileStore(500000, Signlink.cache_dat, Signlink.cache_idx[i], i + 1);
+                // Allow larger locally-packed archives (e.g. expanded config/versionlist for higher revisions).
+                filestores[i] = new FileStore(50_000_000, Signlink.cache_dat, Signlink.cache_idx[i], i + 1);
             }
         }
 
@@ -2784,17 +2785,27 @@ public class Game extends GameShell {
     }
 
     private void updateTexture(int textureID, int cycle) {
+        if ((textureID < 0) || (textureID >= Draw3D.textures.length)) {
+            return;
+        }
+
         if (Draw3D.textureCycle[textureID] < cycle) {
             return;
         }
 
         Image8 texture = Draw3D.textures[textureID];
+        if (texture == null) {
+            return;
+        }
 
         int bottom = (texture.width * texture.height) - 1;
         int adjustment = texture.width * delta * 2; // moves texels down by 2 pixels
 
         byte[] buffer0 = texture.pixels;
         byte[] buffer1 = textureBuffer;
+        if ((buffer1 == null) || (buffer1.length != buffer0.length)) {
+            buffer1 = new byte[buffer0.length];
+        }
 
         for (int i = 0; i <= bottom; i++) {
             buffer1[i] = buffer0[(i - adjustment) & bottom];
@@ -3939,15 +3950,7 @@ public class Game extends GameShell {
             }
 
             if (request.store == 0) {
-//                if (request.file < 9200){
-//                    Model.unpack(request.data, request.file);
-//                }
-//                else{
-//                    Model.method460(request.data, request.file);
-//                }
-
                 Model.unpack(request.data, request.file);
-                //Model.method460(request.data, request.file);
 
                 if ((ondemand.getModelFlags(request.file) & 0x62) != 0) {
                     redrawSidebar = true;
@@ -3957,7 +3960,7 @@ public class Game extends GameShell {
                 }
             } else if (request.store == 1) {
                 if (request.data != null) {
-                    SeqTransform.unpack(request.data);
+                    SeqTransform.unpack(request.file, request.data);
                 }
             } else if (request.store == 2) {
                 if ((request.file == song) && (request.data != null)) {
@@ -4620,6 +4623,7 @@ public class Game extends GameShell {
     public FileArchive loadArchive(int fileId, String caption, String fileName, int expectedChecksum, int progress) throws IOException {
         byte[] data = null;
         int wait = 5;
+        final boolean localCacheOnly = Boolean.parseBoolean(System.getProperty("rs2.localCacheOnly", "true"));
 
         try {
             if (filestores[0] != null) {
@@ -4638,6 +4642,10 @@ public class Game extends GameShell {
 
         if (data != null) {
             return new FileArchive(data);
+        }
+
+        if (localCacheOnly) {
+            throw new IOException("Missing local archive '" + fileName + "' (id=" + fileId + ") in idx0/dat. Check cache path and packing.");
         }
 
         int checksumErrors = 0;

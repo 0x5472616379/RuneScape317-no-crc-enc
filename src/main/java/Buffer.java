@@ -218,6 +218,19 @@ public class Buffer extends DoublyLinkedList.Node {
         return value;
     }
 
+    /**
+     * Legacy "short2" used by several 317+ animation loaders.
+     * Values above 60000 are wrapped into negative range.
+     */
+    public int readShort2() {
+        position += 2;
+        int value = ((data[position - 2] & 0xff) << 8) + (data[position - 1] & 0xff);
+        if (value > 60000) {
+            value -= 65535;
+        }
+        return value;
+    }
+
     public int read16LE() {
         position += 2;
         int value = ((data[position - 1] & 0xff) << 8) + (data[position - 2] & 0xff);

@@ -52,4 +52,35 @@ public class SeqSkeleton {
         }
     }
 
+    public SeqSkeleton(int[] baseTypes, int[][] baseLabels) {
+        this.baseTypes = baseTypes;
+        this.baseLabels = baseLabels;
+    }
+
+    /**
+     * Modern/OSRS-repacked skeleton format used by many "Class18" loaders.
+     * Structure:
+     * - u16 groupCount
+     * - u16[groupCount] baseTypes
+     * - u16[groupCount] labelCounts
+     * - u16 labels...
+     */
+    public static SeqSkeleton unpackModern(Buffer in) {
+        int length = in.readU16();
+        int[] types = new int[length];
+        int[][] labels = new int[length][];
+        for (int i = 0; i < length; i++) {
+            types[i] = in.readU16();
+        }
+        for (int i = 0; i < length; i++) {
+            labels[i] = new int[in.readU16()];
+        }
+        for (int i = 0; i < length; i++) {
+            for (int j = 0; j < labels[i].length; j++) {
+                labels[i][j] = in.readU16();
+            }
+        }
+        return new SeqSkeleton(types, labels);
+    }
+
 }

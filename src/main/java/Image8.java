@@ -137,6 +137,19 @@ public class Image8 {
         }
     }
 
+    public void setTransparency(int red, int green, int blue) {
+        int key = (red << 16) | (green << 8) | blue;
+        for (int i = 0; i < pixels.length; i++) {
+            int paletteIndex = pixels[i] & 0xFF;
+            if (paletteIndex >= palette.length) {
+                continue;
+            }
+            if (palette[paletteIndex] == key) {
+                pixels[i] = 0;
+            }
+        }
+    }
+
     public void blit(int x, int y) {
         x += cropX;
         y += cropY;

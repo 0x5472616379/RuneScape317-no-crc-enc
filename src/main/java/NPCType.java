@@ -236,6 +236,31 @@ public class NPCType {
             int code = in.readU8();
 
             if (code == 0) {
+                if (name != null && name.toLowerCase().contains("imp")) {
+                    System.out.println("NPC " + uid + " (" + name + ") stand=" + seqStandID
+                            + " walk=" + seqWalkID + " turnA=" + seqTurnAroundID
+                            + " turnL=" + seqTurnLeftID + " turnR=" + seqTurnRightID);
+                    if (SeqType.instances != null) {
+                        if (seqWalkID >= 0 && seqWalkID < SeqType.instances.length && SeqType.instances[seqWalkID] != null) {
+                            SeqType w = SeqType.instances[seqWalkID];
+                            int wf = w.frameCount;
+                            int wFirst = (wf > 0 && w.transformIDs != null) ? w.transformIDs[0] : -1;
+                            int wLast = (wf > 0 && w.transformIDs != null) ? w.transformIDs[wf - 1] : -1;
+                            System.out.println("  walkSeq " + seqWalkID + " frameCount=" + wf + " first=" + wFirst + " last=" + wLast);
+                        } else {
+                            System.out.println("  walkSeq " + seqWalkID + " missing");
+                        }
+                        if (seqStandID >= 0 && seqStandID < SeqType.instances.length && SeqType.instances[seqStandID] != null) {
+                            SeqType s = SeqType.instances[seqStandID];
+                            int sf = s.frameCount;
+                            int sFirst = (sf > 0 && s.transformIDs != null) ? s.transformIDs[0] : -1;
+                            int sLast = (sf > 0 && s.transformIDs != null) ? s.transformIDs[sf - 1] : -1;
+                            System.out.println("  standSeq " + seqStandID + " frameCount=" + sf + " first=" + sFirst + " last=" + sLast);
+                        } else {
+                            System.out.println("  standSeq " + seqStandID + " missing");
+                        }
+                    }
+                }
                 return;
             } else if (code == 1) {
                 int modelCount = in.readU8();

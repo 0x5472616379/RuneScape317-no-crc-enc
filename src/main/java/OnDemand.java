@@ -337,12 +337,15 @@ public class OnDemand implements Runnable {
     }
 
     public void request(int store, int file) {
-//        if ((store < 0) || (store > storeFileVersions.length) || (file < 0) || (file > storeFileVersions[store].length)) {
-//            return;
-//        }
-//        if (storeFileVersions[store][file] == 0) {
-//            return;
-//        }
+        if ((store < 0) || (store >= storeFileVersions.length)) {
+            return;
+        }
+        if ((file < 0) || (file >= storeFileVersions[store].length)) {
+            return;
+        }
+        if (storeFileVersions[store][file] == 0) {
+            return;
+        }
 
         synchronized (lock) {
             for (OnDemandRequest request : requests) {
@@ -362,6 +365,9 @@ public class OnDemand implements Runnable {
     }
 
     public int getModelFlags(int id) {
+        if ((id < 0) || (modelIndex == null) || (id >= modelIndex.length)) {
+            return 0;
+        }
         return modelIndex[id] & 0xff;
     }
 
@@ -476,9 +482,15 @@ public class OnDemand implements Runnable {
         if (game.filestores[0] == null) {
             return;
         }
-       if (storeFileVersions[store][file] == 0) {
-           return;
-       }
+        if ((store < 0) || (store >= storeFileVersions.length)) {
+            return;
+        }
+        if ((file < 0) || (file >= storeFileVersions[store].length)) {
+            return;
+        }
+        if (storeFileVersions[store][file] == 0) {
+            return;
+        }
         if (storeFilePriorities[store][file] == 0) {
             return;
         }
@@ -540,6 +552,18 @@ public class OnDemand implements Runnable {
 
     public void prefetch(byte priority, int archive, int file) {
         if (game.filestores[0] == null) {
+            return;
+        }
+        if ((archive < 0) || (archive >= storeFileVersions.length)) {
+            return;
+        }
+        if ((file < 0) || (file >= storeFileVersions[archive].length)) {
+            return;
+        }
+        if ((archive >= storeFileChecksums.length) || (storeFileChecksums[archive] == null) || (file >= storeFileChecksums[archive].length)) {
+            return;
+        }
+        if ((archive >= storeFilePriorities.length) || (storeFilePriorities[archive] == null) || (file >= storeFilePriorities[archive].length)) {
             return;
         }
         if (storeFileVersions[archive][file] == 0) {

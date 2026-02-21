@@ -3,6 +3,7 @@
 // Decompiler options: packimports(3) 
 
 public class Draw3D {
+    private static final int MAX_TEXTURES = 128;
 
     /**
      * A lookup table for 1 / n in 16.16 fixed integer form for values [0...2048]. See below for usages.
@@ -52,15 +53,16 @@ public class Draw3D {
     public static int[] lineOffset;
 
     public static int textureCount;
-    public static Image8[] textures = new Image8[50];
-    public static boolean[] textureTranslucent = new boolean[50];
-    public static int[] averageTextureRGB = new int[50];
+    public static Image8[] textures = new Image8[MAX_TEXTURES];
+    public static boolean[] textureTranslucent = new boolean[MAX_TEXTURES];
+    public static int[] averageTextureRGB = new int[MAX_TEXTURES];
 
     public static int poolSize;
     public static int[][] texelPool;
-    public static int[][] activeTexels = new int[50][];
-    public static int[] textureCycle = new int[50];
+    public static int[][] activeTexels = new int[MAX_TEXTURES][];
+    public static int[] textureCycle = new int[MAX_TEXTURES];
     public static int cycle;
+    private static boolean poolLowmemMode;
 
     /**
      * A lookup table for HSL->RGB. A one dimensional representation of a 128x512 image. The structure of the HSL
@@ -74,7 +76,7 @@ public class Draw3D {
      * @see #drawGouraudScanline(int[], int, int, int, int, int)
      */
     public static int[] palette = new int[0x10000];
-    public static int[][] texturePalette = new int[50][];
+    public static int[][] texturePalette = new int[MAX_TEXTURES][];
 
     static {
         for (int i = 1; i < 512; i++) {
@@ -137,7 +139,7 @@ public class Draw3D {
      */
     public static void clearTexels() {
         texelPool = null;
-        for (int j = 0; j < 50; j++) {
+        for (int j = 0; j < activeTexels.length; j++) {
             activeTexels[j] = null;
         }
     }
@@ -148,14 +150,15 @@ public class Draw3D {
      * @param poolSize the initial pool size.
      */
     public static void initPool(int poolSize) {
-        if (texelPool == null) {
+        if ((texelPool == null) || (poolLowmemMode != lowmem)) {
+            poolLowmemMode = lowmem;
             Draw3D.poolSize = poolSize;
             if (lowmem) {
                 texelPool = new int[Draw3D.poolSize][64 * 64 * 4];
             } else {
                 texelPool = new int[Draw3D.poolSize][128 * 128 * 4];
             }
-            for (int k = 0; k < 50; k++) {
+            for (int k = 0; k < activeTexels.length; k++) {
                 activeTexels[k] = null;
             }
         }
@@ -164,9 +167,10 @@ public class Draw3D {
     public static void unpackTextures(FileArchive archive) {
         textureCount = 0;
 
-        for (int textureID = 0; textureID < 50; textureID++) {
+        for (int textureID = 0; textureID < textures.length; textureID++) {
             try {
                 textures[textureID] = new Image8(archive, String.valueOf(textureID), 0);
+                textures[textureID].setTransparency(255, 0, 255);
 
                 if (lowmem && (textures[textureID].cropW == 128)) {
                     textures[textureID].shrink();
@@ -216,78 +220,123 @@ public class Draw3D {
     }
 
     public static int[] getTexels(int textureID) {
+        int expectedLen = lowmem ? (64 * 64 * 4) : (128 * 128 * 4);
         textureCycle[textureID] = cycle++;
 
         if (activeTexels[textureID] != null) {
-            return activeTexels[textureID];
+            if (activeTexels[textureID].length != expectedLen) {
+                activeTexels[textureID] = null;
+            }
+            else return activeTexels[textureID];
         }
 
-        int[] texels;
+        int[] texels = null;
 
-        if (poolSize > 0) {
-            texels = texelPool[--poolSize];
+        while (poolSize > 0) {
+            int[] pooled = texelPool[--poolSize];
             texelPool[poolSize] = null;
-        } else {
+            if ((pooled != null) && (pooled.length == expectedLen)) {
+                texels = pooled;
+                break;
+            }
+        }
+
+        if (texels == null) {
             int cycle = 0;
             int selected = -1;
 
-            for (int t = 0; t < textureCount; t++) {
-                if ((activeTexels[t] != null) && ((textureCycle[t] < cycle) || (selected == -1))) {
+            for (int t = 0; t < activeTexels.length; t++) {
+                if ((activeTexels[t] != null) && (activeTexels[t].length == expectedLen) && ((textureCycle[t] < cycle) || (selected == -1))) {
                     cycle = textureCycle[t];
                     selected = t;
                 }
             }
-
-            texels = activeTexels[selected];
-            activeTexels[selected] = null;
+            if (selected == -1) {
+                texels = new int[expectedLen];
+            } else {
+                texels = activeTexels[selected];
+                activeTexels[selected] = null;
+            }
         }
 
         activeTexels[textureID] = texels;
         Image8 texture = textures[textureID];
         int[] palette = texturePalette[textureID];
-
+        int colorMask = 0xF8F8FF;
+        int safeTexture59Index = 1;
+        if (textureID == 59) {
+            for (int i = 1; i < palette.length; i++) {
+                int masked = palette[i] & colorMask;
+                if ((masked != 0) && !isMagentaLike(masked)) {
+                    safeTexture59Index = i;
+                    break;
+                }
+            }
+        }
         if (lowmem) {
             textureTranslucent[textureID] = false;
 
             for (int i = 0; i < 4096; i++) {
-                int rgb = texels[i] = palette[texture.pixels[i]] & 0xf8f8ff;
-
+                int paletteIndex = texture.pixels[i] & 0xFF;
+                if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
+                    paletteIndex = safeTexture59Index;
+                }
+                int sampled = palette[paletteIndex] & colorMask;
+                if ((textureID == 59) && isMagentaLike(sampled)) {
+                    sampled = palette[safeTexture59Index] & colorMask;
+                }
+                int rgb = texels[i] = sampled;
                 if (rgb == 0) {
                     textureTranslucent[textureID] = true;
                 }
 
-                texels[4096 + i] = (rgb - (rgb >>> 3)) & 0xf8f8ff;
-                texels[8192 + i] = (rgb - (rgb >>> 2)) & 0xf8f8ff;
-                texels[12288 + i] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & 0xf8f8ff;
+                texels[4096 + i] = (rgb - (rgb >>> 3)) & colorMask;
+                texels[8192 + i] = (rgb - (rgb >>> 2)) & colorMask;
+                texels[12288 + i] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & colorMask;
             }
         } else {
             // scale 64x64 textures up to 128x128
             if (texture.width == 64) {
                 for (int y = 0; y < 128; y++) {
                     for (int x = 0; x < 128; x++) {
-                        texels[x + (y << 7)] = palette[texture.pixels[(x >> 1) + ((y >> 1) << 6)]];
+                        int paletteIndex = texture.pixels[(x >> 1) + ((y >> 1) << 6)] & 0xFF;
+                        if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
+                            paletteIndex = safeTexture59Index;
+                        }
+                        int sampled = palette[paletteIndex] & colorMask;
+                        if ((textureID == 59) && isMagentaLike(sampled)) {
+                            sampled = palette[safeTexture59Index] & colorMask;
+                        }
+                        texels[x + (y << 7)] = sampled;
                     }
                 }
             } else {
                 for (int i = 0; i < 16384; i++) {
-                    texels[i] = palette[texture.pixels[i]];
+                    int paletteIndex = texture.pixels[i] & 0xFF;
+                    if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
+                        paletteIndex = safeTexture59Index;
+                    }
+                    int sampled = palette[paletteIndex] & colorMask;
+                    if ((textureID == 59) && isMagentaLike(sampled)) {
+                        sampled = palette[safeTexture59Index] & colorMask;
+                    }
+                    texels[i] = sampled;
                 }
             }
 
             textureTranslucent[textureID] = false;
 
             for (int i = 0; i < 16384; i++) {
-                texels[i] &= 0xf8f8ff;
+                texels[i] &= colorMask;
 
                 int rgb = texels[i];
-
                 if (rgb == 0) {
                     textureTranslucent[textureID] = true;
                 }
 
-                texels[16384 + i] = (rgb - (rgb >>> 3)) & 0xf8f8ff;
-                texels[32768 + i] = (rgb - (rgb >>> 2)) & 0xf8f8ff;
-                texels[49152 + i] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & 0xf8f8ff;
+                texels[16384 + i] = (rgb - (rgb >>> 3)) & colorMask;
+                texels[32768 + i] = (rgb - (rgb >>> 2)) & colorMask;
+                texels[49152 + i] = (rgb - (rgb >>> 2) - (rgb >>> 3)) & colorMask;
             }
         }
         return texels;
@@ -299,8 +348,6 @@ public class Draw3D {
      * @param brightness the brightness.
      */
     public static void setBrightness(double brightness) {
-        brightness += (Math.random() * 0.03) - 0.015;
-
         int offset = 0;
         for (int y = 0; y < 512; y++) {
             double hue = ((double) (y / 8) / 64D) + 0.0078125D;
@@ -380,7 +427,7 @@ public class Draw3D {
             }
         }
 
-        for (int textureID = 0; textureID < 50; textureID++) {
+        for (int textureID = 0; textureID < textures.length; textureID++) {
             if (textures[textureID] == null) {
                 continue;
             }
@@ -397,7 +444,7 @@ public class Draw3D {
             }
         }
 
-        for (int textureID = 0; textureID < 50; textureID++) {
+        for (int textureID = 0; textureID < textures.length; textureID++) {
             pushTexture(textureID);
         }
     }
@@ -420,6 +467,13 @@ public class Draw3D {
         int intG = (int) (g * 256D);
         int intB = (int) (b * 256D);
         return (intR << 16) + (intG << 8) + intB;
+    }
+
+    private static boolean isMagentaLike(int rgbMasked) {
+        int r = (rgbMasked >> 16) & 0xFF;
+        int g = (rgbMasked >> 8) & 0xFF;
+        int b = rgbMasked & 0xFF;
+        return (r >= 0xC0) && (b >= 0xC0) && (g <= 0x50);
     }
 
     /**

@@ -20,7 +20,15 @@ public class SeqType {
             if (instances[i] == null) {
                 instances[i] = new SeqType();
             }
-            instances[i].load(buffer);
+            instances[i].load(buffer, i);
+            if (i == 168 || i == 171) {
+                SeqType s = instances[i];
+                int fc = s.frameCount;
+                int first = (fc > 0 && s.transformIDs != null) ? s.transformIDs[0] : -1;
+                int last = (fc > 0 && s.transformIDs != null) ? s.transformIDs[fc - 1] : -1;
+                System.out.println("Seq " + i + " frameCount=" + fc + " first=" + first + " last=" + last
+                        + " moveStyle=" + s.moveStyle + " idleStyle=" + s.idleStyle);
+            }
         }
     }
 
@@ -135,24 +143,28 @@ public class SeqType {
         return duration;
     }
 
-    public void load(Buffer buffer) {
+    public void load(Buffer buffer, int seqId) {
+        int lastCode = -1;
         while (true) {
+            int opcodePos = buffer.position;
             int code = buffer.readU8();
 
             if (code == 0) {
                 break;
             } else if (code == 1) {
-                frameCount = buffer.readU8();
+                frameCount = buffer.readU16();
                 transformIDs = new int[frameCount];
                 auxiliaryTransformIDs = new int[frameCount];
                 frameDuration = new int[frameCount];
                 for (int f = 0; f < frameCount; f++) {
-                    transformIDs[f] = buffer.readU16();
-                    auxiliaryTransformIDs[f] = buffer.readU16();
-                    if (auxiliaryTransformIDs[f] == 65535) {
-                        auxiliaryTransformIDs[f] = -1;
-                    }
                     frameDuration[f] = buffer.readU16();
+                }
+                for (int f = 0; f < frameCount; f++) {
+                    transformIDs[f] = buffer.readU16();
+                    auxiliaryTransformIDs[f] = -1;
+                }
+                for (int f = 0; f < frameCount; f++) {
+                    transformIDs[f] += buffer.readU16() << 16;
                 }
             } else if (code == 2) {
                 loopFrameCount = buffer.readU16();
@@ -180,10 +192,30 @@ public class SeqType {
             } else if (code == 11) {
                 replayStyle = buffer.readU8();
             } else if (code == 12) {
-                buffer.read32();
+                int len = buffer.readU8();
+                for (int i = 0; i < len; i++) {
+                    buffer.readU16();
+                }
+                for (int i = 0; i < len; i++) {
+                    buffer.readU16();
+                }
+            } else if (code == 13) {
+                int len = buffer.readU8();
+                for (int i = 0; i < len; i++) {
+                    buffer.read24();
+                }
+            } else if (code == 127) {
+                // cache-specific marker with no payload
             } else {
-                System.out.println("Error unrecognised seq config code: " + code);
+                throw new IllegalStateException(
+                        "Unrecognised seq config code: " + code
+                                + " (seq=" + seqId
+                                + ", pos=" + opcodePos
+                                + ", lastCode=" + lastCode + ")"
+                                + " bytes=" + debugBytes(buffer.data, opcodePos, 20)
+                );
             }
+            lastCode = code;
         }
 
         if (frameCount == 0) {
@@ -211,6 +243,30 @@ public class SeqType {
                 idleStyle = 0;
             }
         }
+    }
+
+    private static String debugBytes(byte[] data, int pos, int span) {
+        int from = Math.max(0, pos - span);
+        int to = Math.min(data.length, pos + span);
+        StringBuilder sb = new StringBuilder();
+        sb.append('[').append(from).append("..").append(to).append("] ");
+        for (int i = from; i < to; i++) {
+            if (i == pos) {
+                sb.append("<");
+            }
+            int v = data[i] & 0xFF;
+            if (v < 16) {
+                sb.append('0');
+            }
+            sb.append(Integer.toHexString(v).toUpperCase());
+            if (i == pos) {
+                sb.append(">");
+            }
+            if (i + 1 < to) {
+                sb.append(' ');
+            }
+        }
+        return sb.toString();
     }
 
 }

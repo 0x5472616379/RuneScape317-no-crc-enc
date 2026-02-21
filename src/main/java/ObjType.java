@@ -5,8 +5,11 @@
 import org.apache.commons.collections4.map.LRUMap;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 public class ObjType {
+    private static boolean loggedTexture59Retexture = false;
+    private static boolean loggedInfernalDef = false;
 
     public static LRUMap<Integer, Image24> iconCache = new LRUMap<>(100);
     public static LRUMap<Integer, Model> modelCache = new LRUMap<>(50);
@@ -43,6 +46,13 @@ public class ObjType {
     }
 
     public static ObjType get(int id) {
+        if ((id < 0) || (id >= count) || (typeOffset == null) || (id >= typeOffset.length)) {
+            ObjType fallback = new ObjType();
+            fallback.id = id;
+            fallback.name = "null";
+            fallback.examine = "null";
+            return fallback;
+        }
         for (int i = 0; i < 10; i++) {
             if (recent[i].id == id) {
                 return recent[i];
@@ -55,6 +65,16 @@ public class ObjType {
         type.id = id;
         type.reset();
         type.read(dat);
+        if ((id == 21295) && !loggedInfernalDef) {
+            loggedInfernalDef = true;
+            System.out.println("Obj 21295 def: modelID=" + type.modelID
+                    + " maleModels=" + type.maleModelID0 + "," + type.maleModelID1 + "," + type.maleModelID2
+                    + " femaleModels=" + type.femaleModelID0 + "," + type.femaleModelID1 + "," + type.femaleModelID2
+                    + " srcColor=" + Arrays.toString(type.srcColor)
+                    + " dstColor=" + Arrays.toString(type.dstColor)
+                    + " srcTexture=" + Arrays.toString(type.srcTexture)
+                    + " dstTexture=" + Arrays.toString(type.dstTexture));
+        }
 
         if (type.certificateID != -1) {
             type.toCertificate();
@@ -278,6 +298,14 @@ public class ObjType {
     public int team;
     public int iconRoll;
     public byte maleOffsetY;
+    public short[] srcTexture;
+    public short[] dstTexture;
+    public boolean tradable;
+    public int shiftClickAction = -2;
+    public int boughtID = -1;
+    public int boughtTemplateID = -1;
+    public int placeholderID = -1;
+    public int placeholderTemplateID = -1;
 
     public ObjType() {
     }
@@ -328,7 +356,12 @@ public class ObjType {
 
         if (srcColor != null) {
             for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(srcColor[i], dstColor[i]);
+                model.recolor(dstColor[i], srcColor[i]);
+            }
+        }
+        if (srcTexture != null) {
+            for (int i = 0; i < srcTexture.length; i++) {
+                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
             }
         }
         return model;
@@ -401,7 +434,22 @@ public class ObjType {
 
         if (srcColor != null) {
             for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(srcColor[i], dstColor[i]);
+                model.recolor(dstColor[i], srcColor[i]);
+            }
+        }
+        if (srcTexture != null) {
+            if (!loggedTexture59Retexture) {
+                for (int i = 0; i < srcTexture.length; i++) {
+                    int src = srcTexture[i] & 0xFFFF;
+                    int dst = dstTexture[i] & 0xFFFF;
+                    if ((src == 59) || (dst == 59)) {
+                        loggedTexture59Retexture = true;
+                        System.out.println("Obj " + id + " worn retexture pair: src=" + src + " dst=" + dst);
+                    }
+                }
+            }
+            for (int i = 0; i < srcTexture.length; i++) {
+                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
             }
         }
 
@@ -447,6 +495,14 @@ public class ObjType {
         lightAmbient = 0;
         lightAttenuation = 0;
         team = 0;
+        srcTexture = null;
+        dstTexture = null;
+        tradable = false;
+        shiftClickAction = -2;
+        boughtID = -1;
+        boughtTemplateID = -1;
+        placeholderID = -1;
+        placeholderTemplateID = -1;
     }
 
     public void toCertificate() {
@@ -484,9 +540,6 @@ public class ObjType {
      * @return the model or <code>null</code> if unavailable.
      */
     public Model getModel(int count) {
-
-        System.out.println("getModel called for item " + this.id + " with count " + count);
-
 
         if ((stackID != null) && (count > 1)) {
             int id = -1;
@@ -530,7 +583,22 @@ public class ObjType {
 
         if (srcColor != null) {
             for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(srcColor[i], dstColor[i]);
+                model.recolor(dstColor[i], srcColor[i]);
+            }
+        }
+        if (srcTexture != null) {
+            if (!loggedTexture59Retexture) {
+                for (int i = 0; i < srcTexture.length; i++) {
+                    int src = srcTexture[i] & 0xFFFF;
+                    int dst = dstTexture[i] & 0xFFFF;
+                    if ((src == 59) || (dst == 59)) {
+                        loggedTexture59Retexture = true;
+                        System.out.println("Obj " + id + " inv retexture pair: src=" + src + " dst=" + dst);
+                    }
+                }
+            }
+            for (int i = 0; i < srcTexture.length; i++) {
+                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
             }
         }
 
@@ -569,7 +637,12 @@ public class ObjType {
 
         if (srcColor != null) {
             for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(srcColor[i], dstColor[i]);
+                model.recolor(dstColor[i], srcColor[i]);
+            }
+        }
+        if (srcTexture != null) {
+            for (int i = 0; i < srcTexture.length; i++) {
+                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
             }
         }
         return model;
@@ -603,12 +676,18 @@ public class ObjType {
                 if (iconOffsetY > 32767) {
                     iconOffsetY -= 0x10000;
                 }
+            } else if (code == 9) {
+                in.readString();
             } else if (code == 10) {
                 in.readU16();
             } else if (code == 11) {
                 stackable = true;
             } else if (code == 12) {
                 cost = in.read32();
+            } else if (code == 13) {
+                in.readU8();
+            } else if (code == 14) {
+                in.readU8();
             } else if (code == 16) {
                 members = true;
             } else if (code == 23) {
@@ -621,6 +700,8 @@ public class ObjType {
                 femaleOffsetY = in.read8();
             } else if (code == 26) {
                 femaleModelID1 = in.readU16();
+            } else if (code == 27) {
+                in.readU8();
             } else if ((code >= 30) && (code < 35)) {
                 if (options == null) {
                     options = new String[5];
@@ -642,6 +723,20 @@ public class ObjType {
                     srcColor[i] = in.readU16();
                     dstColor[i] = in.readU16();
                 }
+            } else if (code == 41) {
+                int retextureCount = in.readU8();
+                srcTexture = new short[retextureCount];
+                dstTexture = new short[retextureCount];
+                for (int i = 0; i < retextureCount; i++) {
+                    srcTexture[i] = (short) in.readU16();
+                    dstTexture[i] = (short) in.readU16();
+                }
+            } else if (code == 42) {
+                shiftClickAction = in.read8();
+            } else if (code == 65) {
+                tradable = true;
+            } else if (code == 75) {
+                in.read16();
             } else if (code == 78) {
                 maleModelID2 = in.readU16();
             } else if (code == 79) {
@@ -654,6 +749,8 @@ public class ObjType {
                 maleHeadModelID1 = in.readU16();
             } else if (code == 93) {
                 femaleHeadModelID1 = in.readU16();
+            } else if (code == 94) {
+                in.readU16();
             } else if (code == 95) {
                 iconRoll = in.readU16();
             } else if (code == 97) {
@@ -679,6 +776,25 @@ public class ObjType {
                 lightAttenuation = in.read8() * 5;
             } else if (code == 115) {
                 team = in.readU8();
+            } else if (code == 139) {
+                boughtID = in.readU16();
+            } else if (code == 140) {
+                boughtTemplateID = in.readU16();
+            } else if (code == 148) {
+                placeholderID = in.readU16();
+            } else if (code == 149) {
+                placeholderTemplateID = in.readU16();
+            } else if (code == 249) {
+                int params = in.readU8();
+                for (int i = 0; i < params; i++) {
+                    boolean isString = in.readU8() == 1;
+                    in.read24();
+                    if (isString) {
+                        in.readString();
+                    } else {
+                        in.read32();
+                    }
+                }
             }
         }
     }
