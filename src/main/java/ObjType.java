@@ -5,11 +5,7 @@
 import org.apache.commons.collections4.map.LRUMap;
 
 import java.io.IOException;
-import java.util.Arrays;
-
 public class ObjType {
-    private static boolean loggedTexture59Retexture = false;
-    private static boolean loggedInfernalDef = false;
 
     public static LRUMap<Integer, Image24> iconCache = new LRUMap<>(100);
     public static LRUMap<Integer, Model> modelCache = new LRUMap<>(50);
@@ -65,16 +61,6 @@ public class ObjType {
         type.id = id;
         type.reset();
         type.read(dat);
-        if ((id == 21295) && !loggedInfernalDef) {
-            loggedInfernalDef = true;
-            System.out.println("Obj 21295 def: modelID=" + type.modelID
-                    + " maleModels=" + type.maleModelID0 + "," + type.maleModelID1 + "," + type.maleModelID2
-                    + " femaleModels=" + type.femaleModelID0 + "," + type.femaleModelID1 + "," + type.femaleModelID2
-                    + " srcColor=" + Arrays.toString(type.srcColor)
-                    + " dstColor=" + Arrays.toString(type.dstColor)
-                    + " srcTexture=" + Arrays.toString(type.srcTexture)
-                    + " dstTexture=" + Arrays.toString(type.dstTexture));
-        }
 
         if (type.certificateID != -1) {
             type.toCertificate();
@@ -310,6 +296,43 @@ public class ObjType {
     public ObjType() {
     }
 
+    private static void applyItemRecolors(Model model, int[] src, int[] dst, boolean reverse) {
+        if (src == null || dst == null) {
+            return;
+        }
+        int len = Math.min(src.length, dst.length);
+        for (int i = 0; i < len; i++) {
+            if (reverse) {
+                model.recolor(dst[i], src[i]);
+            } else {
+                model.recolor(src[i], dst[i]);
+            }
+        }
+    }
+
+    private static void applyItemRetextures(Model model, short[] src, short[] dst, boolean reverse) {
+        if (src == null || dst == null) {
+            return;
+        }
+        int len = Math.min(src.length, dst.length);
+        for (int i = 0; i < len; i++) {
+            int a = src[i] & 0xFFFF;
+            int b = dst[i] & 0xFFFF;
+            if (reverse) {
+                model.retexture(b, a);
+            } else {
+                model.retexture(a, b);
+            }
+        }
+    }
+
+    private boolean shouldReverseCapeMappings() {
+        // Temporary compatibility for reversed opcode-40 export mode.
+        //if it wasn't for the fact that OSDC dumped colors in reverse order (opcode 40 written as dst,src instead of src,dst)
+        //we wouldn't of needed this, but oh well, targeted binary bytecode patch inc. since I don't have the source for openrs atm /shrug
+        return (id >= 9747 && id <= 9814) || id == 13331; //really anything over 7158 since we only added new items, we didn't modify the old stuff
+    }
+
     public boolean validateHeadModel(int gender) {
         int modelID0 = maleHeadModelID0;
         int modelID1 = maleHeadModelID1;
@@ -354,16 +377,9 @@ public class ObjType {
             model = new Model(2, new Model[]{model, Model.tryGet(modelID1)});
         }
 
-        if (srcColor != null) {
-            for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(dstColor[i], srcColor[i]);
-            }
-        }
-        if (srcTexture != null) {
-            for (int i = 0; i < srcTexture.length; i++) {
-                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
-            }
-        }
+        boolean reverseCape = shouldReverseCapeMappings();
+        applyItemRecolors(model, srcColor, dstColor, reverseCape);
+        applyItemRetextures(model, srcTexture, dstTexture, reverseCape);
         return model;
     }
 
@@ -432,25 +448,10 @@ public class ObjType {
             model.translate(0, femaleOffsetY, 0);
         }
 
-        if (srcColor != null) {
-            for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(dstColor[i], srcColor[i]);
-            }
-        }
+        boolean reverseCape = shouldReverseCapeMappings();
+        applyItemRecolors(model, srcColor, dstColor, reverseCape);
         if (srcTexture != null) {
-            if (!loggedTexture59Retexture) {
-                for (int i = 0; i < srcTexture.length; i++) {
-                    int src = srcTexture[i] & 0xFFFF;
-                    int dst = dstTexture[i] & 0xFFFF;
-                    if ((src == 59) || (dst == 59)) {
-                        loggedTexture59Retexture = true;
-                        System.out.println("Obj " + id + " worn retexture pair: src=" + src + " dst=" + dst);
-                    }
-                }
-            }
-            for (int i = 0; i < srcTexture.length; i++) {
-                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
-            }
+            applyItemRetextures(model, srcTexture, dstTexture, reverseCape);
         }
 
         return model;
@@ -555,12 +556,9 @@ public class ObjType {
             }
         }
 
-        if (id < 0){
-            System.out.println();
-        }
         Model model = null;
 
-        try{
+        try {
             model = modelCache.get(id);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -581,25 +579,10 @@ public class ObjType {
             model.scale(scaleX, scaleY, scaleZ);
         }
 
-        if (srcColor != null) {
-            for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(dstColor[i], srcColor[i]);
-            }
-        }
+        boolean reverseCape = shouldReverseCapeMappings();
+        applyItemRecolors(model, srcColor, dstColor, reverseCape);
         if (srcTexture != null) {
-            if (!loggedTexture59Retexture) {
-                for (int i = 0; i < srcTexture.length; i++) {
-                    int src = srcTexture[i] & 0xFFFF;
-                    int dst = dstTexture[i] & 0xFFFF;
-                    if ((src == 59) || (dst == 59)) {
-                        loggedTexture59Retexture = true;
-                        System.out.println("Obj " + id + " inv retexture pair: src=" + src + " dst=" + dst);
-                    }
-                }
-            }
-            for (int i = 0; i < srcTexture.length; i++) {
-                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
-            }
+            applyItemRetextures(model, srcTexture, dstTexture, reverseCape);
         }
 
         model.calculateNormals(64 + lightAmbient, 768 + lightAttenuation, -50, -10, -50, true);
@@ -635,16 +618,9 @@ public class ObjType {
             return null;
         }
 
-        if (srcColor != null) {
-            for (int i = 0; i < srcColor.length; i++) {
-                model.recolor(dstColor[i], srcColor[i]);
-            }
-        }
-        if (srcTexture != null) {
-            for (int i = 0; i < srcTexture.length; i++) {
-                model.retexture(dstTexture[i] & 0xFFFF, srcTexture[i] & 0xFFFF);
-            }
-        }
+        boolean reverseCape = shouldReverseCapeMappings();
+        applyItemRecolors(model, srcColor, dstColor, reverseCape);
+        applyItemRetextures(model, srcTexture, dstTexture, reverseCape);
         return model;
     }
 

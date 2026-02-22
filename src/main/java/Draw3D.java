@@ -263,29 +263,12 @@ public class Draw3D {
         Image8 texture = textures[textureID];
         int[] palette = texturePalette[textureID];
         int colorMask = 0xF8F8FF;
-        int safeTexture59Index = 1;
-        if (textureID == 59) {
-            for (int i = 1; i < palette.length; i++) {
-                int masked = palette[i] & colorMask;
-                if ((masked != 0) && !isMagentaLike(masked)) {
-                    safeTexture59Index = i;
-                    break;
-                }
-            }
-        }
         if (lowmem) {
             textureTranslucent[textureID] = false;
 
             for (int i = 0; i < 4096; i++) {
                 int paletteIndex = texture.pixels[i] & 0xFF;
-                if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
-                    paletteIndex = safeTexture59Index;
-                }
-                int sampled = palette[paletteIndex] & colorMask;
-                if ((textureID == 59) && isMagentaLike(sampled)) {
-                    sampled = palette[safeTexture59Index] & colorMask;
-                }
-                int rgb = texels[i] = sampled;
+                int rgb = texels[i] = palette[paletteIndex] & colorMask;
                 if (rgb == 0) {
                     textureTranslucent[textureID] = true;
                 }
@@ -300,27 +283,13 @@ public class Draw3D {
                 for (int y = 0; y < 128; y++) {
                     for (int x = 0; x < 128; x++) {
                         int paletteIndex = texture.pixels[(x >> 1) + ((y >> 1) << 6)] & 0xFF;
-                        if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
-                            paletteIndex = safeTexture59Index;
-                        }
-                        int sampled = palette[paletteIndex] & colorMask;
-                        if ((textureID == 59) && isMagentaLike(sampled)) {
-                            sampled = palette[safeTexture59Index] & colorMask;
-                        }
-                        texels[x + (y << 7)] = sampled;
+                        texels[x + (y << 7)] = palette[paletteIndex] & colorMask;
                     }
                 }
             } else {
                 for (int i = 0; i < 16384; i++) {
                     int paletteIndex = texture.pixels[i] & 0xFF;
-                    if ((textureID == 59) && (paletteIndex == 0) && (palette.length > 1)) {
-                        paletteIndex = safeTexture59Index;
-                    }
-                    int sampled = palette[paletteIndex] & colorMask;
-                    if ((textureID == 59) && isMagentaLike(sampled)) {
-                        sampled = palette[safeTexture59Index] & colorMask;
-                    }
-                    texels[i] = sampled;
+                    texels[i] = palette[paletteIndex] & colorMask;
                 }
             }
 
@@ -467,13 +436,6 @@ public class Draw3D {
         int intG = (int) (g * 256D);
         int intB = (int) (b * 256D);
         return (intR << 16) + (intG << 8) + intB;
-    }
-
-    private static boolean isMagentaLike(int rgbMasked) {
-        int r = (rgbMasked >> 16) & 0xFF;
-        int g = (rgbMasked >> 8) & 0xFF;
-        int b = rgbMasked & 0xFF;
-        return (r >= 0xC0) && (b >= 0xC0) && (g <= 0x50);
     }
 
     /**

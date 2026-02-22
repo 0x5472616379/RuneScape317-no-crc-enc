@@ -20,15 +20,7 @@ public class SeqType {
             if (instances[i] == null) {
                 instances[i] = new SeqType();
             }
-            instances[i].load(buffer, i);
-            if (i == 168 || i == 171) {
-                SeqType s = instances[i];
-                int fc = s.frameCount;
-                int first = (fc > 0 && s.transformIDs != null) ? s.transformIDs[0] : -1;
-                int last = (fc > 0 && s.transformIDs != null) ? s.transformIDs[fc - 1] : -1;
-                System.out.println("Seq " + i + " frameCount=" + fc + " first=" + first + " last=" + last
-                        + " moveStyle=" + s.moveStyle + " idleStyle=" + s.idleStyle);
-            }
+            instances[i].load(buffer);
         }
     }
 
@@ -143,10 +135,8 @@ public class SeqType {
         return duration;
     }
 
-    public void load(Buffer buffer, int seqId) {
-        int lastCode = -1;
+    public void load(Buffer buffer) {
         while (true) {
-            int opcodePos = buffer.position;
             int code = buffer.readU8();
 
             if (code == 0) {
@@ -156,6 +146,7 @@ public class SeqType {
                 transformIDs = new int[frameCount];
                 auxiliaryTransformIDs = new int[frameCount];
                 frameDuration = new int[frameCount];
+
                 for (int f = 0; f < frameCount; f++) {
                     frameDuration[f] = buffer.readU16();
                 }
@@ -166,6 +157,7 @@ public class SeqType {
                 for (int f = 0; f < frameCount; f++) {
                     transformIDs[f] += buffer.readU16() << 16;
                 }
+
             } else if (code == 2) {
                 loopFrameCount = buffer.readU16();
             } else if (code == 3) {
@@ -193,56 +185,41 @@ public class SeqType {
                 replayStyle = buffer.readU8();
             } else if (code == 12) {
                 int len = buffer.readU8();
-                for (int i = 0; i < len; i++) {
-                    buffer.readU16();
-                }
-                for (int i = 0; i < len; i++) {
-                    buffer.readU16();
-                }
+                for (int i = 0; i < len; i++) buffer.readU16();
+                for (int i = 0; i < len; i++) buffer.readU16();
             } else if (code == 13) {
                 int len = buffer.readU8();
-                for (int i = 0; i < len; i++) {
+                for (int i = 0; i < len; i++) buffer.read24();
+            } else if (code == 14) {
+                buffer.read32();
+            } else if (code == 15) {
+                int count = buffer.readU16();
+                for (int i = 0; i < count; i++) {
+                    buffer.readU16();
                     buffer.read24();
                 }
-            } else if (code == 127) {
-                // cache-specific marker with no payload
+            } else if (code == 16) {
+                buffer.readU16();
+                buffer.readU16();
+            } else if (code == 17) {
+                int count = buffer.readU8();
+                for (int i = 0; i < count; i++) buffer.readU8();
+            } else if (code == 18 || code == 127) {
+                // no payload
             } else {
-                throw new IllegalStateException(
-                        "Unrecognised seq config code: " + code
-                                + " (seq=" + seqId
-                                + ", pos=" + opcodePos
-                                + ", lastCode=" + lastCode + ")"
-                                + " bytes=" + debugBytes(buffer.data, opcodePos, 20)
-                );
+                throw new IllegalStateException("Unrecognised seq config code: " + code);
             }
-            lastCode = code;
         }
 
         if (frameCount == 0) {
             frameCount = 1;
-            transformIDs = new int[1];
-            transformIDs[0] = -1;
-            auxiliaryTransformIDs = new int[1];
-            auxiliaryTransformIDs[0] = -1;
-            frameDuration = new int[1];
-            frameDuration[0] = -1;
+            transformIDs = new int[] { -1 };
+            auxiliaryTransformIDs = new int[] { -1 };
+            frameDuration = new int[] { -1 };
         }
 
-        if (moveStyle == -1) {
-            if (mask != null) {
-                moveStyle = 2;
-            } else {
-                moveStyle = 0;
-            }
-        }
-
-        if (idleStyle == -1) {
-            if (mask != null) {
-                idleStyle = 2;
-            } else {
-                idleStyle = 0;
-            }
-        }
+        if (moveStyle == -1) moveStyle = (mask != null) ? 2 : 0;
+        if (idleStyle == -1) idleStyle = (mask != null) ? 2 : 0;
     }
 
     private static String debugBytes(byte[] data, int pos, int span) {

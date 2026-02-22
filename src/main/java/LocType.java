@@ -133,6 +133,8 @@ public class LocType {
     public int seqID;
     public int translateZ;
     public int[] srcColor;
+    public short[] srcTexture;
+    public short[] dstTexture;
     public String[] options;
 
     public LocType() {
@@ -145,6 +147,8 @@ public class LocType {
         examine = null;
         srcColor = null;
         dstColor = null;
+        srcTexture = null;
+        dstTexture = null;
         sizeX = 1;
         sizeZ = 1;
         solid = true;
@@ -385,6 +389,13 @@ public class LocType {
             }
         }
 
+        if (srcTexture != null) {
+            int len = Math.min(srcTexture.length, dstTexture.length);
+            for (int i = 0; i < len; i++) {
+                modified.retexture(srcTexture[i] & 0xFFFF, dstTexture[i] & 0xFFFF);
+            }
+        }
+
         if (scaled) {
             modified.scale(scaleX, scaleY, scaleZ);
         }
@@ -452,7 +463,6 @@ public class LocType {
                 blocksProjectiles = false;
             } else if (code == 19) {
                 interactable = buffer.readU8();
-
                 if (interactable == 1) {
                     this.interactable = true;
                 }
@@ -489,6 +499,14 @@ public class LocType {
                     srcColor[i] = buffer.readU16();
                     dstColor[i] = buffer.readU16();
                 }
+            } else if (code == 41) {
+                int retextureCount = buffer.readU8();
+                srcTexture = new short[retextureCount];
+                dstTexture = new short[retextureCount];
+                for (int i = 0; i < retextureCount; i++) {
+                    srcTexture[i] = (short) buffer.readU16();
+                    dstTexture[i] = (short) buffer.readU16();
+                }
             } else if (code == 60) {
                 mapfunctionIcon = buffer.readU16();
             } else if (code == 62) {
@@ -519,23 +537,19 @@ public class LocType {
                 supportsObj = buffer.readU8();
             } else if (code == 77) {
                 varbit = buffer.readU16();
-
                 if (varbit == 65535) {
                     varbit = -1;
                 }
 
                 varp = buffer.readU16();
-
                 if (varp == 65535) {
                     varp = -1;
                 }
 
                 int overrideCount = buffer.readU8();
                 overrideTypeIDs = new int[overrideCount + 1];
-
                 for (int i = 0; i <= overrideCount; i++) {
                     overrideTypeIDs[i] = buffer.readU16();
-
                     if (overrideTypeIDs[i] == 65535) {
                         overrideTypeIDs[i] = -1;
                     }
@@ -543,10 +557,8 @@ public class LocType {
             }
         }
 
-        // no code 19
         if (interactable == -1) {
             this.interactable = (modelIDs != null) && ((modelKinds == null) || (modelKinds[0] == 10));
-
             if (options != null) {
                 this.interactable = true;
             }
@@ -556,10 +568,9 @@ public class LocType {
             solid = false;
             blocksProjectiles = false;
         }
-        
+
         if (supportsObj == -1) {
             supportsObj = solid ? 1 : 0;
         }
     }
-
 }

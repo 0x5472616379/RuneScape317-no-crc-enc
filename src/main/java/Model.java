@@ -126,7 +126,6 @@ public class Model extends Entity {
         int hasVertexLabels = buffer.readU8();
 
         if (id == 461) { //5196, ely 461,
-            System.out.println();
             //assuming face and vertex count are correct
             hasFaceLabels = 1;
             hasVertexLabels = 1;
@@ -444,14 +443,9 @@ public class Model extends Entity {
         counter++;
         sourceModelId = id;
 
-        if (id == 461){
-            System.out.println();
-        }
-
         Header header = headers[id];
         byte[] actualData = header.data;
         if (actualData[actualData.length - 1] == -1 && actualData[actualData.length - 2] == -1) {
-            System.out.println("New Model: " + id);
             read622Model(actualData, id);
             if (newmodel[id]) {
                 scale2(4);
@@ -462,44 +456,6 @@ public class Model extends Entity {
                         }
                     }
                 }
-            }
-            if ((id == 33144) || (id == 33103)) {
-                int alphaNonZero = 0;
-                int alphaHigh = 0;
-                int alphaMax = 0;
-                if (faceAlpha != null) {
-                    for (int value : faceAlpha) {
-                        int a = value & 0xFF;
-                        if (a != 0) {
-                            alphaNonZero++;
-                        }
-                        if (a >= 128) {
-                            alphaHigh++;
-                        }
-                        if (a > alphaMax) {
-                            alphaMax = a;
-                        }
-                    }
-                }
-                int type0 = 0;
-                int type1 = 0;
-                int type2 = 0;
-                int type3 = 0;
-                if (faceInfo != null) {
-                    for (int info : faceInfo) {
-                        switch (info & 0x3) {
-                            case 0 -> type0++;
-                            case 1 -> type1++;
-                            case 2 -> type2++;
-                            case 3 -> type3++;
-                        }
-                    }
-                } else {
-                    type0 = faceCount;
-                }
-                System.out.println("Model " + id + " alphaStats: faceCount=" + faceCount
-                        + " alphaNonZero=" + alphaNonZero + " alphaHigh=" + alphaHigh + " alphaMax=" + alphaMax
-                        + " types=" + type0 + "," + type1 + "," + type2 + "," + type3);
             }
             return;
         }
@@ -922,12 +878,15 @@ public class Model extends Entity {
         nc7.position = i8;
         for (int i12 = 0; i12 < numTriangles; i12++) {
             triangleColours2[i12] = nc1.readU16();
+            boolean compatHiddenFace = false;
             if (l1 == 1) {
-                faceInfo[i12] = nc2.read8();
-                if (faceInfo[i12] == 2) {
+                int info = nc2.read8();
+                if (info == 2) {
                     triangleColours2[i12] = 65535;
+                    info = 0;
+                    compatHiddenFace = true;
                 }
-                faceInfo[i12] = 0;
+                faceInfo[i12] = info;
             }
             if (i2 == 255) {
                 facePriority[i12] = nc3.read8();
@@ -936,6 +895,9 @@ public class Model extends Entity {
                 faceAlpha[i12] = nc4.read8();
                 if (faceAlpha[i12] < 0)
                     faceAlpha[i12] = (256 + faceAlpha[i12]);
+            }
+            if (compatHiddenFace && faceAlpha != null) {
+                faceAlpha[i12] = 255;
             }
             if (k2 == 1)
                 faceLabel[i12] = nc5.readU8();
@@ -1280,12 +1242,15 @@ public class Model extends Entity {
         nc7.position = i8;
         for (int i12 = 0; i12 < numTriangles; i12++) {
             triangleColours2[i12] = nc1.readU16();
+            boolean compatHiddenFace = false;
             if (l1 == 1) {
-                faceInfo[i12] = nc2.read8();
-                if (faceInfo[i12] == 2) {
+                int info = nc2.read8();
+                if (info == 2) {
                     triangleColours2[i12] = 65535;
+                    info = 0;
+                    compatHiddenFace = true;
                 }
-                faceInfo[i12] = 0;
+                faceInfo[i12] = info;
             }
             if (i2 == 255) {
                 facePriority[i12] = nc3.read8();
@@ -1294,6 +1259,9 @@ public class Model extends Entity {
                 faceAlpha[i12] = nc4.read8();
                 if (faceAlpha[i12] < 0)
                     faceAlpha[i12] = (256 + faceAlpha[i12]);
+            }
+            if (compatHiddenFace && faceAlpha != null) {
+                faceAlpha[i12] = 255;
             }
             if (k2 == 1)
                 faceLabel[i12] = nc5.readU8();
@@ -1440,11 +1408,6 @@ public class Model extends Entity {
         int set = 0;
         int set2 = 0;
         int max = (Draw3D.textures != null) ? Draw3D.textures.length : 50;
-        int dropped = 0;
-        int uses59 = 0;
-        int textured = 0;
-        int minTex = Integer.MAX_VALUE;
-        int maxTex = Integer.MIN_VALUE;
         if (textureIds != null) {
             texturedVertexA = new int[faceCount];
             texturedVertexB = new int[faceCount];
@@ -1453,23 +1416,11 @@ public class Model extends Entity {
             for (int i = 0; i < faceCount; i++) {
                 int textureId = textureIds[i] & 0xFFFF;
                 if (textureIds[i] == -1 && faceInfo[i] == 2) {
-                    faceColor[i] = 65535;
                     faceInfo[i] = 0;
                 }
                 if (textureId >= max || textureId == 39) {
                     faceInfo[i] = 0;
-                    dropped++;
                     continue;
-                }
-                textured++;
-                if (textureId == 59) {
-                    uses59++;
-                }
-                if (textureId < minTex) {
-                    minTex = textureId;
-                }
-                if (textureId > maxTex) {
-                    maxTex = textureId;
                 }
                 faceInfo[i] = 2 + set2;
                 set2 += 4;
@@ -1491,23 +1442,8 @@ public class Model extends Entity {
                         }
                     }
                 }
-                if ((texture_type >= 0) && (textureRenderTypes != null) && (texture_type < textureRenderTypes.length)
-                        && ((textureRenderTypes[texture_type] & 0xFF) != 0)) {
-                    texture_type = -1;
-                }
                 if (texture_type == 0xff)
                     texture_type = -1;
-
-                // Same cleanup used in newer clients: if texture UV tri exactly matches face tri,
-                // there is no unique mapping data to preserve, so use face vertices directly.
-                if (texture_type >= 0) {
-                    int ta = texa[texture_type];
-                    int tb = texb[texture_type];
-                    int tc = texc[texture_type];
-                    if ((ta == a) && (tb == b) && (tc == c)) {
-                        texture_type = -1;
-                    }
-                }
 
                 texturedVertexA[set] = texture_type == -1 ? a : texa[texture_type];
                 texturedVertexB[set] = texture_type == -1 ? b : texb[texture_type];
@@ -1515,12 +1451,6 @@ public class Model extends Entity {
 
             }
             texturedFaceCount = set;
-
-            if ((sourceModelId == 33144) || (uses59 > 0)) {
-                String range = (textured > 0) ? (minTex + "-" + maxTex) : "none";
-                System.out.println("Model " + sourceModelId + " textured faces=" + textured + " kept=" + set
-                        + " dropped=" + dropped + " tex59Faces=" + uses59 + " texRange=" + range + " maxTex=" + max);
-            }
         }
     }
 
@@ -2254,30 +2184,6 @@ public class Model extends Entity {
         }
         int file = id >>> 16;
         int frame = id & 0xFFFF;
-        if ((file == 1380) && ((frame >= 97 && frame <= 104) || (frame >= 114 && frame <= 121))) {
-            int modelLabelSlots = labelVertices.length;
-            int usable = 0;
-            SeqSkeleton sk = transform.skeleton;
-            for (int i = 0; i < transform.length; i++) {
-                int base = transform.bases[i];
-                if (base < 0 || base >= sk.baseLabels.length) {
-                    continue;
-                }
-                int[] labels = sk.baseLabels[base];
-                if (labels == null) {
-                    continue;
-                }
-                for (int l : labels) {
-                    if (l >= 0 && l < labelVertices.length && labelVertices[l] != null) {
-                        usable++;
-                        break;
-                    }
-                }
-            }
-            System.out.println("ImpSeqCompat id=" + id + " file=" + file + " frame=" + frame
-                    + " transformLen=" + transform.length + " modelLabelSlots=" + modelLabelSlots
-                    + " usableBases=" + usable);
-        }
         SeqSkeleton skeleton = transform.skeleton;
         baseX = 0;
         baseY = 0;
@@ -2547,12 +2453,36 @@ public class Model extends Entity {
      * @param dst the destination texture id.
      */
     public void recolor(int src, int dst) {
+        int src16 = src & 0xFFFF;
         for (int k = 0; k < faceCount; k++) {
-            if (faceColor[k] == src) {
+            if ((faceColor[k] & 0xFFFF) == src16) {
                 faceColor[k] = dst;
             }
         }
     }
+
+    public int countFacesWithColor(int color) {
+        int count = 0;
+        for (int f = 0; f < faceCount; f++) {
+            if ((faceColor[f] & 0xFFFF) == (color & 0xFFFF)) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public int countTexturedFacesWithColor(int color) {
+        int count = 0;
+        for (int f = 0; f < faceCount; f++) {
+            boolean textured = (faceInfo == null) || ((faceInfo[f] & 2) == 2);
+            if (textured && ((faceColor[f] & 0xFFFF) == (color & 0xFFFF))) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+
 
     /**
      * Replaces use of source texture id with destination texture id on textured faces.
@@ -2565,6 +2495,8 @@ public class Model extends Entity {
             }
         }
     }
+
+
 
     /**
      * Performs the equivalent operation of rotating the entire model on the Y axis by 180 degrees.
@@ -3254,10 +3186,23 @@ public class Model extends Entity {
      *
      * @param face the face id.
      */
-    public void drawFace(int face) {
-        if ((faceColor != null) && (faceColor[face] == 65535)) {
-            return;
+    private boolean hasValidTexturedFace(int texturedFace) {
+        if (texturedFace < 0 || texturedFace >= texturedFaceCount) {
+            return false;
         }
+        if (texturedVertexA == null || texturedVertexB == null || texturedVertexC == null) {
+            return false;
+        }
+        if (texturedFace >= texturedVertexA.length || texturedFace >= texturedVertexB.length || texturedFace >= texturedVertexC.length) {
+            return false;
+        }
+        int ta = texturedVertexA[texturedFace];
+        int tb = texturedVertexB[texturedFace];
+        int tc = texturedVertexC[texturedFace];
+        return ta >= 0 && tb >= 0 && tc >= 0 && ta < vertexCount && tb < vertexCount && tc < vertexCount;
+    }
+
+    public void drawFace(int face) {
         if (faceNearClipped[face]) {
             drawNearClippedFace(face);
             return;
@@ -3288,12 +3233,20 @@ public class Model extends Entity {
             Draw3D.fillTriangle(vertexScreenY[a], vertexScreenY[b], vertexScreenY[c], vertexScreenX[a], vertexScreenX[b], vertexScreenX[c], palette[faceColorA[face]]);
         } else if (type == 2) {
             int texturedFace = faceInfo[face] >> 2;
+            if (!hasValidTexturedFace(texturedFace)) {
+                Draw3D.fillGouraudTriangle(vertexScreenY[a], vertexScreenY[b], vertexScreenY[c], vertexScreenX[a], vertexScreenX[b], vertexScreenX[c], faceColorA[face], faceColorB[face], faceColorC[face]);
+                return;
+            }
             int ta = texturedVertexA[texturedFace];
             int tb = texturedVertexB[texturedFace];
             int tc = texturedVertexC[texturedFace];
             Draw3D.fillTexturedTriangle(vertexScreenY[a], vertexScreenY[b], vertexScreenY[c], vertexScreenX[a], vertexScreenX[b], vertexScreenX[c], faceColorA[face], faceColorB[face], faceColorC[face], vertexViewSpaceX[ta], vertexViewSpaceX[tb], vertexViewSpaceX[tc], vertexViewSpaceY[ta], vertexViewSpaceY[tb], vertexViewSpaceY[tc], vertexViewSpaceZ[ta], vertexViewSpaceZ[tb], vertexViewSpaceZ[tc], faceColor[face]);
         } else if (type == 3) {
             int texturedFace = faceInfo[face] >> 2;
+            if (!hasValidTexturedFace(texturedFace)) {
+                Draw3D.fillTriangle(vertexScreenY[a], vertexScreenY[b], vertexScreenY[c], vertexScreenX[a], vertexScreenX[b], vertexScreenX[c], palette[faceColorA[face]]);
+                return;
+            }
             int ta = texturedVertexA[texturedFace];
             int tb = texturedVertexB[texturedFace];
             int tc = texturedVertexC[texturedFace];
@@ -3307,9 +3260,6 @@ public class Model extends Entity {
      * @param face the face id.
      */
     public void drawNearClippedFace(int face) {
-        if ((faceColor != null) && (faceColor[face] == 65535)) {
-            return;
-        }
         int centerX = Draw3D.centerX;
         int centerY = Draw3D.centerY;
         int elements = 0;
@@ -3429,12 +3379,20 @@ public class Model extends Entity {
                 Draw3D.fillTriangle(y0, y1, y2, x0, x1, x2, palette[faceColorA[face]]);
             } else if (type == 2) {
                 int texturedFace = faceInfo[face] >> 2;
+                if (!hasValidTexturedFace(texturedFace)) {
+                    Draw3D.fillGouraudTriangle(y0, y1, y2, x0, x1, x2, clippedColor[0], clippedColor[1], clippedColor[2]);
+                    return;
+                }
                 int tA = texturedVertexA[texturedFace];
                 int tB = texturedVertexB[texturedFace];
                 int tC = texturedVertexC[texturedFace];
                 Draw3D.fillTexturedTriangle(y0, y1, y2, x0, x1, x2, clippedColor[0], clippedColor[1], clippedColor[2], vertexViewSpaceX[tA], vertexViewSpaceX[tB], vertexViewSpaceX[tC], vertexViewSpaceY[tA], vertexViewSpaceY[tB], vertexViewSpaceY[tC], vertexViewSpaceZ[tA], vertexViewSpaceZ[tB], vertexViewSpaceZ[tC], faceColor[face]);
             } else if (type == 3) {
                 int texturedFace = faceInfo[face] >> 2;
+                if (!hasValidTexturedFace(texturedFace)) {
+                    Draw3D.fillTriangle(y0, y1, y2, x0, x1, x2, palette[faceColorA[face]]);
+                    return;
+                }
                 int tA = texturedVertexA[texturedFace];
                 int tB = texturedVertexB[texturedFace];
                 int tC = texturedVertexC[texturedFace];
@@ -3462,6 +3420,11 @@ public class Model extends Entity {
                 Draw3D.fillTriangle(y0, y2, clippedY[3], x0, x2, clippedX[3], colorA);
             } else if (type == 2) {
                 int texturedFace = faceInfo[face] >> 2;
+                if (!hasValidTexturedFace(texturedFace)) {
+                    Draw3D.fillGouraudTriangle(y0, y1, y2, x0, x1, x2, clippedColor[0], clippedColor[1], clippedColor[2]);
+                    Draw3D.fillGouraudTriangle(y0, y2, clippedY[3], x0, x2, clippedX[3], clippedColor[0], clippedColor[2], clippedColor[3]);
+                    return;
+                }
                 int tA = texturedVertexA[texturedFace];
                 int tB = texturedVertexB[texturedFace];
                 int tC = texturedVertexC[texturedFace];
@@ -3469,6 +3432,12 @@ public class Model extends Entity {
                 Draw3D.fillTexturedTriangle(y0, y2, clippedY[3], x0, x2, clippedX[3], clippedColor[0], clippedColor[2], clippedColor[3], vertexViewSpaceX[tA], vertexViewSpaceX[tB], vertexViewSpaceX[tC], vertexViewSpaceY[tA], vertexViewSpaceY[tB], vertexViewSpaceY[tC], vertexViewSpaceZ[tA], vertexViewSpaceZ[tB], vertexViewSpaceZ[tC], faceColor[face]);
             } else if (type == 3) {
                 int texturedFace = faceInfo[face] >> 2;
+                if (!hasValidTexturedFace(texturedFace)) {
+                    int colorA = palette[faceColorA[face]];
+                    Draw3D.fillTriangle(y0, y1, y2, x0, x1, x2, colorA);
+                    Draw3D.fillTriangle(y0, y2, clippedY[3], x0, x2, clippedX[3], colorA);
+                    return;
+                }
                 int tA = texturedVertexA[texturedFace];
                 int tB = texturedVertexB[texturedFace];
                 int tC = texturedVertexC[texturedFace];

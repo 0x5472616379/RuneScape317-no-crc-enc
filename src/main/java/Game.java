@@ -3135,7 +3135,7 @@ public class Game extends GameShell {
             }
 
             int teleport = in.readN(1);
-            npc.type = NPCType.get(in.readN(12));
+            npc.type = NPCType.get(in.readN(14));
 
             if (in.readN(1) == 1) {
                 entityUpdateIDs[entityUpdateCount++] = id;

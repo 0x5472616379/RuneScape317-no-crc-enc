@@ -236,31 +236,6 @@ public class NPCType {
             int code = in.readU8();
 
             if (code == 0) {
-                if (name != null && name.toLowerCase().contains("imp")) {
-                    System.out.println("NPC " + uid + " (" + name + ") stand=" + seqStandID
-                            + " walk=" + seqWalkID + " turnA=" + seqTurnAroundID
-                            + " turnL=" + seqTurnLeftID + " turnR=" + seqTurnRightID);
-                    if (SeqType.instances != null) {
-                        if (seqWalkID >= 0 && seqWalkID < SeqType.instances.length && SeqType.instances[seqWalkID] != null) {
-                            SeqType w = SeqType.instances[seqWalkID];
-                            int wf = w.frameCount;
-                            int wFirst = (wf > 0 && w.transformIDs != null) ? w.transformIDs[0] : -1;
-                            int wLast = (wf > 0 && w.transformIDs != null) ? w.transformIDs[wf - 1] : -1;
-                            System.out.println("  walkSeq " + seqWalkID + " frameCount=" + wf + " first=" + wFirst + " last=" + wLast);
-                        } else {
-                            System.out.println("  walkSeq " + seqWalkID + " missing");
-                        }
-                        if (seqStandID >= 0 && seqStandID < SeqType.instances.length && SeqType.instances[seqStandID] != null) {
-                            SeqType s = SeqType.instances[seqStandID];
-                            int sf = s.frameCount;
-                            int sFirst = (sf > 0 && s.transformIDs != null) ? s.transformIDs[0] : -1;
-                            int sLast = (sf > 0 && s.transformIDs != null) ? s.transformIDs[sf - 1] : -1;
-                            System.out.println("  standSeq " + seqStandID + " frameCount=" + sf + " first=" + sFirst + " last=" + sLast);
-                        } else {
-                            System.out.println("  standSeq " + seqStandID + " missing");
-                        }
-                    }
-                }
                 return;
             } else if (code == 1) {
                 int modelCount = in.readU8();
@@ -276,13 +251,31 @@ public class NPCType {
                 size = in.read8();
             } else if (code == 13) {
                 seqStandID = in.readU16();
+                if (seqStandID == 65535) {
+                    seqStandID = -1;
+                }
             } else if (code == 14) {
                 seqWalkID = in.readU16();
+                if (seqWalkID == 65535) {
+                    seqWalkID = -1;
+                }
             } else if (code == 17) {
                 seqWalkID = in.readU16();
                 seqTurnAroundID = in.readU16();
                 seqTurnLeftID = in.readU16();
                 seqTurnRightID = in.readU16();
+                if (seqWalkID == 65535) {
+                    seqWalkID = -1;
+                }
+                if (seqTurnAroundID == 65535) {
+                    seqTurnAroundID = -1;
+                }
+                if (seqTurnLeftID == 65535) {
+                    seqTurnLeftID = -1;
+                }
+                if (seqTurnRightID == 65535) {
+                    seqTurnRightID = -1;
+                }
             } else if ((code >= 30) && (code < 40)) {
                 if (options == null) {
                     options = new String[5];
@@ -326,8 +319,14 @@ public class NPCType {
                 lightAttenuation = in.read8() * 5;
             } else if (code == 102) {
                 headicon = in.readU16();
+                if (headicon == 65535) {
+                    headicon = -1;
+                }
             } else if (code == 103) {
                 turnSpeed = in.readU16();
+                if (turnSpeed == 65535) {
+                    turnSpeed = -1;
+                }
             } else if (code == 106) {
                 varbitID = in.readU16();
 
