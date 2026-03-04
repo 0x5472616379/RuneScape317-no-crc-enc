@@ -17,6 +17,7 @@ public class PlayerEntity extends PathingEntity {
     public String name;
     public int combatLevel;
     public int headicons;
+    public int skullIcon = -1;
     public int locStartCycle;
     public int locStopCycle;
     public int y;
@@ -118,6 +119,8 @@ public class PlayerEntity extends PathingEntity {
         in.position = 0;
         gender = in.readU8();
         headicons = in.readU8();
+        int skull = in.readU8();
+        skullIcon = skull == 255 ? -1 : skull;
         transmogrify = null;
         team = 0;
 
@@ -419,3 +422,4 @@ public class PlayerEntity extends PathingEntity {
     }
 
 }
+

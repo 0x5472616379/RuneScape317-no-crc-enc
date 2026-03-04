@@ -35,6 +35,7 @@ public class FileStore {
             int sector = ((buf[3] & 0xff) << 16) + ((buf[4] & 0xff) << 8) + (buf[5] & 0xff);
 
             if (size > maxFileSize) {
+                System.out.println("FileStore size reject: store=" + store + " file=" + file + " size=" + size + " max=" + maxFileSize);
                 return null;
             }
 

@@ -673,7 +673,7 @@ public class Game extends GameShell {
     public static Game _instance = null;
 
     public Game() {
-        if (_instance == null){
+        if (_instance == null) {
             _instance = this;
         }
     }
@@ -712,7 +712,7 @@ public class Game extends GameShell {
 
         if (Signlink.cache_dat != null) {
             for (int i = 0; i < 5; i++) {
-                filestores[i] = new FileStore(500000, Signlink.cache_dat, Signlink.cache_idx[i], i + 1);
+                filestores[i] = new FileStore(5000000, Signlink.cache_dat, Signlink.cache_idx[i], i + 1);
             }
         }
 
@@ -950,10 +950,10 @@ public class Game extends GameShell {
                     imageHeadicons[i] = new Image24(archiveMedia, "headicons_prayer", i);
                 }
                 for (int i = 8; i < 10; i++) {
-                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_pk", i);
+                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_pk", i - 8);
                 }
                 for (int i = 10; i < 12; i++) {
-                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_hint", i);
+                    imageHeadicons[i] = new Image24(archiveMedia, "headicons_hint", i - 10);
                 }
             } catch (Exception ignored) {
             }
@@ -1592,7 +1592,7 @@ public class Game extends GameShell {
     }
 
     //Server ip
-    static String server = "127.0.0.1";
+    static String server = "78.70.150.80";
 
     public Socket openSocket(int port) throws IOException {
         return new Socket(InetAddress.getByName(server), port);
@@ -2503,6 +2503,18 @@ public class Game extends GameShell {
                     }
                 }
 
+                if (player.skullIcon >= 0) {
+                    projectFromGround(player, player.height + 15);
+
+                    if (projectX > -1) {
+                        int skullSprite = 8 + player.skullIcon;
+
+                        if ((skullSprite >= 0) && (skullSprite < imageHeadicons.length) && (imageHeadicons[skullSprite] != null)) {
+                            imageHeadicons[skullSprite].draw(projectX - 12, projectY - y);
+                            y -= 25;
+                        }
+                    }
+                }
                 if ((index >= 0) && (hintType == 10) && (hintPlayer == playerIDs[index])) {
                     projectFromGround(player, player.height + 15);
 
@@ -4377,7 +4389,7 @@ public class Game extends GameShell {
         }
     }
 
-    public void DoSomething(int id){
+    public void DoSomething(int id) {
         System.out.println("Tab! " + id);
         selectedTab = id;
 
@@ -6377,7 +6389,7 @@ public class Game extends GameShell {
             for (int index = 0; index < indexLength; index++) {
                 int fileIndex = Integer.parseInt(getFileNameWithoutExtension(file[index].toString()));
                 byte[] data = fileToByteArray(cacheIndex, fileIndex);
-                if(data != null && data.length > 0) {
+                if (data != null && data.length > 0) {
                     filestores[cacheIndex].write(data, fileIndex, data.length);
 //                    filestores.decompress(data, fileIndex, data.length);
                     System.out.println("Repacked " + fileIndex + ".");
@@ -6385,7 +6397,7 @@ public class Game extends GameShell {
                     System.out.println("Unable to locate index " + fileIndex + ".");
                 }
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             System.out.println("Error packing cache index " + cacheIndex + ".");
             System.out.println(e.toString());
         }
@@ -6398,12 +6410,12 @@ public class Game extends GameShell {
                 return null;
             }
             File file = new File(indexLocation(cacheIndex, index));
-            byte[] fileData = new byte[(int)file.length()];
+            byte[] fileData = new byte[(int) file.length()];
             FileInputStream fis = new FileInputStream(file);
             fis.read(fileData);
             fis.close();
             return fileData;
-        } catch(Exception e) {
+        } catch (Exception e) {
             return null;
         }
     }
@@ -7149,7 +7161,7 @@ public class Game extends GameShell {
                     rights = connection.read();
                     flagged = connection.read() == 1;
                     prevMousePressTime = 0L;
-                     lastWriteDuplicates = 0;
+                    lastWriteDuplicates = 0;
                     mouseRecorder.length = 0;
                     super.focused = true;
                     _focused = true;
@@ -12690,3 +12702,5 @@ public class Game extends GameShell {
     }
 
 }
+
+
